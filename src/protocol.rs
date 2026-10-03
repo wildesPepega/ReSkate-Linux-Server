@@ -1820,25 +1820,39 @@ pub fn advance_pose_deadline(next: &mut u64, now: u64, interval: u64) {
     *next = now.wrapping_add(interval).wrapping_sub(behind);
 }
 
+// After a network hiccup Steam hands over everything a player sent meanwhile at once, which
+// can overrun one second's budget. Only a player over budget for this many seconds in a row is
+// treated as flooding (the C++ server drops on the first second).
+pub const RECEIVE_OVER_SECONDS: u32 = 4;
+
 #[derive(Clone, Default)]
 pub struct ReceiveBudget {
     since: u64,
     bytes: u64,
     packets: u64,
+    over: bool,
+    over_seconds: u32,
 }
 impl ReceiveBudget {
     pub fn accept(&mut self, now: u64, size: usize, sources: u64) -> bool {
+        if sources == 0 || sources > MAX_REMOTE_PLAYERS as u64 {
+            return false;
+        }
         if now.wrapping_sub(self.since) >= 1_000_000 {
+            // A gap of more than a second between packets ends a run of busy seconds.
+            let consecutive = now.wrapping_sub(self.since) < 2_000_000;
+            self.over_seconds = if self.over && consecutive { self.over_seconds + 1 } else { 0 };
             self.since = now;
             self.bytes = 0;
             self.packets = 0;
+            self.over = false;
         }
         self.bytes += size as u64;
         self.packets += 1;
-        sources != 0
-            && sources <= MAX_REMOTE_PLAYERS as u64
-            && self.bytes <= 2 * 1024 * 1024 * sources
-            && self.packets <= (2 * u64::from(TICK_RATES[3]) + 80 + 32) * sources
+        if self.bytes > 2 * 1024 * 1024 * sources || self.packets > (2 * u64::from(TICK_RATES[3]) + 80 + 32) * sources {
+            self.over = true;
+        }
+        !self.over || self.over_seconds + 1 < RECEIVE_OVER_SECONDS
     }
 }
 

@@ -413,3 +413,31 @@ fn config_file_round_trip_and_maps() {
     assert_eq!(config_error(&bad), "port and query_port must differ.");
     let _ = std::fs::remove_dir_all(&folder);
 }
+
+#[test]
+fn receive_budget_survives_a_backlog_but_not_a_flood() {
+    let limit = (2 * u64::from(TICK_RATES[3]) + 80 + 32) as usize;
+    // A backlog after a network hiccup: ten times a second's worth in one go, then normal traffic.
+    let mut budget = ReceiveBudget::default();
+    for _ in 0..limit * 10 {
+        assert!(budget.accept(5_000_000, 100, 1));
+    }
+    for second in 1..10u64 {
+        for i in 0..60u64 {
+            assert!(budget.accept(5_000_000 + second * 1_000_000 + i * 16_000, 100, 1));
+        }
+    }
+    // A flood that keeps going is dropped in its fourth second.
+    let mut flood = ReceiveBudget::default();
+    let mut dropped_at = None;
+    'outer: for second in 0..10u64 {
+        for i in 0..limit as u64 + 50 {
+            if !flood.accept(1_000_000 + second * 1_000_000 + i * 1_000, 100, 1) {
+                dropped_at = Some(second);
+                break 'outer;
+            }
+        }
+    }
+    assert_eq!(dropped_at, Some(u64::from(RECEIVE_OVER_SECONDS) - 1));
+    assert!(!ReceiveBudget::default().accept(0, 1, 0));
+}
