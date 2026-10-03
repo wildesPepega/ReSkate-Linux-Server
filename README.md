@@ -1,5 +1,11 @@
 # ReSkate Linux Server
 
+> [!CAUTION]
+> **AI-generated port.** This server was ported from the original C++ Windows server to Rust
+> **entirely by Claude Opus 5.5** (Anthropic's AI model, via Claude Code). Unit tests pass and it has
+> been run against Steam, but the code has not been audited line by line. Use it at your own risk and
+> please [report issues](https://github.com/wildesPepega/ReSkate-Linux-Server/issues).
+
 A native Linux port of the [ReSkate](https://github.com/Dingo-Shenanigans/ReSkate) dedicated server,
 rewritten in Rust. It speaks the same network protocol as the Windows `ReSkateServer.exe`, so players
 join it straight from the game – no Wine, no Windows VM.
@@ -14,6 +20,23 @@ join it straight from the game – no Wine, no Windows VM.
 | Platform | Linux x86_64, glibc 2.31 or newer (Debian 11+, Ubuntu 20.04+, …) |
 | Language | Rust (edition 2021) |
 | License | GPL-3.0 (same as ReSkate) |
+
+## Why a native Linux server?
+
+- **No Windows, no Wine.** Runs on any cheap Linux VPS, root server or game panel. Not having to
+  run a Windows VM or Wine saves a lot of RAM and CPU, and removes a whole class of compatibility
+  problems.
+- **Small footprint.** One 3.4 MB binary plus `libsteam_api.so`. Measured on an idle server:
+  ~48 MB RAM (most of it Steam's own libraries) and ~1 % of one CPU core.
+- **Fast start.** Up and listed in the server browser in about one second.
+- **Rust.** Memory-safe by design: no buffer overflows or use-after-free bugs in the network code
+  that parses untrusted player packets. Built with LTO and full optimisation.
+- **Clean process handling.** `quit`, Ctrl+C, SIGTERM and SIGHUP all sign out of Steam before
+  exiting, so Docker, systemd and Pterodactyl stop it cleanly.
+- **Panel ready.** Reads commands from stdin and comes with a Pterodactyl egg that installs and
+  updates itself from the latest release.
+- **Drop-in compatible.** Same protocol, commands and `ReSkateServer.json` as the Windows server:
+  copy your config and `Mods/` over and keep going.
 
 ## Features
 
