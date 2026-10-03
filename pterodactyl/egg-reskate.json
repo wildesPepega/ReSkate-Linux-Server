@@ -1,0 +1,52 @@
+{
+    "_comment": "Pterodactyl egg for the ReSkate dedicated server (Linux port in Rust). https://github.com/wildesPepega/ReSkate-Linux-Server",
+    "meta": {
+        "version": "PTDL_v2",
+        "update_url": "https://raw.githubusercontent.com/wildesPepega/ReSkate-Linux-Server/main/pterodactyl/egg-reskate.json"
+    },
+    "exported_at": "2026-10-04T00:00:00+00:00",
+    "name": "ReSkate",
+    "author": "68642699+wildesPepega@users.noreply.github.com",
+    "description": "ReSkate dedicated server for skate. (Linux build). Players find it in the in-game server browser (Multiplayer > Servers) or join with its code. Needs a primary UDP allocation (game port) and a second one for the query port.",
+    "features": null,
+    "docker_images": {
+        "Debian": "ghcr.io/parkervcp/yolks:debian"
+    },
+    "file_denylist": [],
+    "startup": "./ReSkateServer --port {{SERVER_PORT}} --query-port {{QUERY_PORT}}",
+    "config": {
+        "files": "{}",
+        "startup": "{\r\n    \"done\": \"is up on \"\r\n}",
+        "logs": "{}",
+        "stop": "quit"
+    },
+    "scripts": {
+        "installation": {
+            "script": "#!/bin/bash\r\n# ReSkate dedicated server: SteamCMD for Steam's steamclient.so, then the server itself.\r\nset -e\r\napt-get update\r\napt-get install -y --no-install-recommends curl ca-certificates tar lib32gcc-s1\r\n\r\nmkdir -p /mnt/server/steamcmd\r\ncd /mnt/server/steamcmd\r\ncurl -sSL -o steamcmd.tar.gz https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz\r\ntar -xzf steamcmd.tar.gz\r\nrm steamcmd.tar.gz\r\nexport HOME=/mnt/server\r\n./steamcmd.sh +quit || true\r\n\r\n# The server signs in to Steam through steamclient.so: ~/.steam/sdk64 and next to the server.\r\nmkdir -p /mnt/server/.steam/sdk64\r\ncp -f linux64/steamclient.so /mnt/server/.steam/sdk64/steamclient.so\r\ncp -f linux64/steamclient.so /mnt/server/steamclient.so\r\n\r\ncd /mnt/server\r\nif [ -n \"${DOWNLOAD_URL}\" ]; then\r\n    echo \"Downloading the server from ${DOWNLOAD_URL}\"\r\n    curl -sSL -o reskate.tar.gz \"${DOWNLOAD_URL}\"\r\n    tar -xzf reskate.tar.gz --strip-components=1\r\n    rm reskate.tar.gz\r\nelse\r\n    echo \"No DOWNLOAD_URL: upload the contents of ReSkateServer-linux-x64.tar.gz to the server's folder.\"\r\nfi\r\nchmod +x /mnt/server/ReSkateServer 2>/dev/null || true\r\necho \"Install finished.\"\r\n",
+            "container": "ghcr.io/parkervcp/installers:debian",
+            "entrypoint": "bash"
+        }
+    },
+    "variables": [
+        {
+            "name": "Query Port",
+            "description": "UDP port for Steam server queries (ping in the server browser). Add it as a second allocation; it must differ from the game port.",
+            "env_variable": "QUERY_PORT",
+            "default_value": "27016",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|integer|between:1,65535",
+            "field_type": "text"
+        },
+        {
+            "name": "Download URL",
+            "description": "URL of ReSkateServer-linux-x64.tar.gz. Defaults to the latest release; reinstall the server to update. Leave empty and upload the files yourself instead.",
+            "env_variable": "DOWNLOAD_URL",
+            "default_value": "https://github.com/wildesPepega/ReSkate-Linux-Server/releases/latest/download/ReSkateServer-linux-x64.tar.gz",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string|max:512",
+            "field_type": "text"
+        }
+    ]
+}

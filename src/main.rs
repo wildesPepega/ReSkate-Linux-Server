@@ -1,0 +1,449 @@
+// ReSkate dedicated server for Linux: a headless session host that players find in the in-game
+// server browser (a Rust port of Server/main.cpp). Runs from its own folder, next to
+// libsteam_api.so; Steam's steamclient.so comes from SteamCMD (~/.steam/sdk64 or this folder).
+//
+// Console: commands are read line by line from stdin and every line of output is written to
+// stdout as it happens, so hosting panels (Pterodactyl and the like) can drive it. SIGINT,
+// SIGTERM and SIGHUP shut it down cleanly, signing out of Steam first.
+mod activity;
+mod buffers;
+mod config;
+mod host;
+mod objects;
+mod party;
+mod password;
+mod protocol;
+mod speed;
+mod steam;
+mod text;
+mod throwdown;
+mod update;
+mod wire;
+mod words;
+mod world;
+
+#[cfg(test)]
+mod tests;
+
+use config::{config_error, load_config, load_levels, map_setting, save_config};
+use host::Host;
+use std::fs::{File, OpenOptions};
+use std::io::{BufRead, Write};
+use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{channel, Receiver, TryRecvError};
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
+use steam::{Advertisement, SteamServer, SteamTransport};
+
+static STOPPING: AtomicBool = AtomicBool::new(false);
+static LOG_FILE: Mutex<Option<File>> = Mutex::new(None);
+
+// Microseconds on the monotonic clock. Session timings share it.
+pub fn now_us() -> u64 {
+    let mut time = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+    unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut time) };
+    time.tv_sec as u64 * 1_000_000 + time.tv_nsec as u64 / 1000
+}
+
+fn stamp() -> (String, String) {
+    unsafe {
+        let now = libc::time(std::ptr::null_mut());
+        let mut local: libc::tm = std::mem::zeroed();
+        libc::localtime_r(&now, &mut local);
+        let date = format!("{:04}-{:02}-{:02}", local.tm_year + 1900, local.tm_mon + 1, local.tm_mday);
+        let time = format!("{:02}:{:02}:{:02}", local.tm_hour, local.tm_min, local.tm_sec);
+        (date, time)
+    }
+}
+
+fn write_log(text: &str) {
+    let mut file = LOG_FILE.lock().unwrap_or_else(|e| e.into_inner());
+    let (date, time) = stamp();
+    // One write per line, flushed at once, so a hosting panel reading the pipe sees it now.
+    let mut out = std::io::stdout().lock();
+    let _ = writeln!(out, "[{time}] {text}");
+    let _ = out.flush();
+    if let Some(file) = file.as_mut() {
+        let _ = writeln!(file, "[{date} {time}] {text}");
+        let _ = file.flush();
+    }
+}
+
+extern "C" fn on_signal(_: libc::c_int) {
+    STOPPING.store(true, Ordering::SeqCst);
+}
+
+fn folder() -> PathBuf {
+    std::env::current_exe()
+        .ok()
+        .and_then(|path| path.canonicalize().ok())
+        .and_then(|path| path.parent().map(Path::to_path_buf))
+        .unwrap_or_else(|| PathBuf::from("."))
+}
+
+// Steam's client library looks in ~/.steam/sdk64. A steamclient.so put next to the server is
+// linked there when nothing is there yet.
+fn link_steam_client(here: &Path) {
+    let client = here.join("steamclient.so");
+    let Some(home) = std::env::var_os("HOME") else { return };
+    let sdk = PathBuf::from(home).join(".steam").join("sdk64");
+    let target = sdk.join("steamclient.so");
+    if !client.exists() || target.exists() {
+        return;
+    }
+    if std::fs::create_dir_all(&sdk).is_ok() {
+        let _ = std::os::unix::fs::symlink(&client, &target);
+    }
+}
+
+// Console lines, read on their own thread so the network loop never waits for typing.
+fn console_input() -> Receiver<String> {
+    let (sender, receiver) = channel();
+    std::thread::spawn(move || {
+        let stdin = std::io::stdin();
+        let mut reader = stdin.lock();
+        let mut buffer = Vec::new();
+        loop {
+            buffer.clear();
+            match reader.read_until(b'\n', &mut buffer) {
+                Ok(0) | Err(_) => return, // no console (EOF): the server keeps running
+                Ok(_) => {
+                    let line = String::from_utf8_lossy(&buffer);
+                    let line = line.trim_end_matches(['\n', '\r']).to_string();
+                    if sender.send(line).is_err() {
+                        return;
+                    }
+                }
+            }
+        }
+    });
+    receiver
+}
+
+fn panic_text(payload: Box<dyn std::any::Any + Send>) -> String {
+    if let Some(text) = payload.downcast_ref::<String>() {
+        text.clone()
+    } else if let Some(text) = payload.downcast_ref::<&str>() {
+        text.to_string()
+    } else {
+        "unknown error".into()
+    }
+}
+
+fn update_message(check: &update::UpdateCheck) -> String {
+    let mut text = format!(
+        "ReSkate {} is out; this Linux server is {}. It cannot install the Windows release on its own: replace it with a Linux build of {} and restart it.",
+        check.version,
+        update::VERSION,
+        check.version
+    );
+    if check.new_game_build {
+        text += " The new release supports a newer skate. build: players on it cannot join this server until then.";
+    }
+    text
+}
+
+struct Options {
+    config: Option<PathBuf>,
+    no_update: bool,
+    port: Option<u16>,
+    query_port: Option<u16>,
+}
+
+fn usage() -> &'static str {
+    "ReSkateServer [--config <file>] [--port <port>] [--query-port <port>] [--no-update]\n\
+     Commands are read from the console (stdin); type help once it runs."
+}
+
+fn parse_options() -> Result<Options, String> {
+    let mut options = Options { config: None, no_update: false, port: None, query_port: None };
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let mut i = 0;
+    while i < args.len() {
+        let value = |i: usize| args.get(i + 1).cloned().ok_or_else(|| format!("{} needs a value.", args[i]));
+        let port = |text: String, name: &str| text.parse::<u16>().ok().filter(|&p| p != 0).ok_or_else(|| format!("{name} must be 1 to 65535."));
+        match args[i].as_str() {
+            "--config" => {
+                options.config = Some(PathBuf::from(value(i)?));
+                i += 1;
+            }
+            "--port" => {
+                options.port = Some(port(value(i)?, "--port")?);
+                i += 1;
+            }
+            "--query-port" | "--query_port" => {
+                options.query_port = Some(port(value(i)?, "--query-port")?);
+                i += 1;
+            }
+            "--no-update" => options.no_update = true,
+            "--export-world-layers" => {
+                return Err("--export-world-layers reads the game's own files and runs on Windows only; copy \
+                            world-layers.json from a player's %LOCALAPPDATA%\\ReSkate\\cache folder instead."
+                    .into())
+            }
+            "--help" | "-h" => return Err(usage().into()),
+            other => return Err(format!("Unknown option {other}.\n{}", usage())),
+        }
+        i += 1;
+    }
+    Ok(options)
+}
+
+fn run() -> i32 {
+    let options = match parse_options() {
+        Ok(options) => options,
+        Err(text) => {
+            println!("{text}");
+            return 1;
+        }
+    };
+    let here = folder();
+    let config_file = options.config.clone().unwrap_or_else(|| here.join("ReSkateServer.json"));
+    if let Ok(file) = OpenOptions::new().create(true).append(true).open(here.join("ReSkateServer.log")) {
+        *LOG_FILE.lock().unwrap() = Some(file);
+    }
+
+    let fresh = !config_file.exists();
+    let mut added = Vec::new();
+    let mut config = match load_config(&config_file, &mut added) {
+        Ok(config) => config,
+        Err(e) => {
+            write_log(&format!("Cannot read {}: {e}", config_file.display()));
+            return 1;
+        }
+    };
+    let file_name = config_file.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+    if fresh {
+        write_log(&format!("Wrote a default {file_name}. Edit it to name the server and add admins."));
+    }
+    if !added.is_empty() {
+        write_log(&format!("Added new settings to {file_name} with their defaults: {}.", added.join(", ")));
+    }
+    // Maps: the retail ones and custom maps from Mods/<mod>/reskate-levels.json.
+    for problem in load_levels(&here.join("Mods")) {
+        write_log(&format!("Mods: skipped {problem}"));
+    }
+    let level_count = config::levels().len();
+    if level_count > 6 {
+        write_log(&format!("Mods: {} custom map(s).", level_count - 6));
+    }
+    // Older configs name the map by its full destination; keep the plain name instead.
+    let setting = map_setting(&config.map);
+    if setting != config.map && !setting.is_empty() {
+        config.map = setting;
+        let _ = save_config(&config);
+    }
+    // A hosting panel hands out the ports; they win over the file.
+    if let Some(port) = options.port {
+        config.port = port;
+    }
+    if let Some(port) = options.query_port {
+        config.query_port = port;
+    }
+    let error = config_error(&config);
+    if !error.is_empty() {
+        write_log(&format!("Config problem: {error}"));
+        return 1;
+    }
+    // Release checks: at startup, then every half hour. --no-update or "auto_update": false turns them off.
+    let auto_update = config.auto_update && !options.no_update;
+    let mut announced_version = String::new();
+    if auto_update {
+        write_log("Checking for updates...");
+        let check = update::check_for_update();
+        if check.available {
+            write_log(&update_message(&check));
+            announced_version = check.version.clone();
+        } else if check.problem.is_empty() {
+            write_log(&format!("The server is up to date ({}).", check.version));
+        } else {
+            write_log(&format!("Update check skipped: {}.", check.problem));
+        }
+    }
+    // World layers are optional: without the players' catalog every player keeps their own.
+    let catalog = here.join("world-layers.json");
+    if catalog.exists() {
+        match world::read_world_layers(&catalog) {
+            Ok(catalog) => {
+                world::install_world_layer_catalog(catalog);
+                write_log(&format!("World layers: {} from world-layers.json.", world::world_layers().len()));
+            }
+            Err(e) => write_log(&format!("world-layers.json is unreadable; world layer sync is off: {e}")),
+        }
+    }
+
+    link_steam_client(&here);
+    let mut steam = match SteamServer::start(&here, config.port, config.query_port) {
+        Ok(steam) => steam,
+        Err(e) => {
+            write_log(&e);
+            return 1;
+        }
+    };
+    write_log("Signing in to Steam...");
+    let login_started = Instant::now();
+    while !steam.logged_on() && !STOPPING.load(Ordering::SeqCst) {
+        steam.run_callbacks();
+        if login_started.elapsed() > Duration::from_secs(60) {
+            write_log("Steam sign-in timed out after 60 s. Check the internet connection and try again.");
+            return 1;
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    if STOPPING.load(Ordering::SeqCst) {
+        write_log("Shutting down.");
+        return 0;
+    }
+
+    let mut transport = SteamTransport::new();
+    if !transport.open_game_server(steam.library()) {
+        write_log(&format!("Steam networking failed: {}", transport.detail));
+        return 1;
+    }
+    let mut host = Host::new(config, transport, Box::new(write_log));
+    if let Err(e) = catch_unwind(AssertUnwindSafe(|| host.start())).unwrap_or_else(|p| Err(panic_text(p))) {
+        write_log(&format!("Could not open the server: {e}"));
+        return 1;
+    }
+    write_log(&format!("{} is up on {} for {} players.", host.config.name, host.map_name(), host.config.max_players));
+    write_log(&format!("Steam ID {}, public IP {}.", steam.steam_id(), steam.public_ip()));
+    write_log(&format!(
+        "Join code: {}{}",
+        host.invite(),
+        if host.config.password.is_empty() { "" } else { " (password required)" }
+    ));
+    write_log(&if host.config.admins.is_empty() {
+        "No admins yet: type \"admin add <SteamID64>\" to add one.".to_string()
+    } else {
+        format!("{} admin(s). Type help for commands.", host.config.admins.len())
+    });
+
+    let input = console_input();
+    let mut next_advertise = Instant::now();
+    let mut name_allowed: Option<bool> = None;
+    let update_interval = Duration::from_secs(30 * 60);
+    let mut next_update_check = Instant::now() + update_interval;
+    let mut update_check: Option<Receiver<update::UpdateCheck>> = None;
+    let mut update_now = false;
+    let start_check = || {
+        let (sender, receiver) = channel();
+        std::thread::spawn(move || {
+            let _ = sender.send(update::check_for_update());
+        });
+        receiver
+    };
+    while !STOPPING.load(Ordering::SeqCst) {
+        steam.run_callbacks();
+        if let Err(p) = catch_unwind(AssertUnwindSafe(|| host.tick(now_us()))) {
+            write_log(&format!("Server error: {}", panic_text(p)));
+        }
+        loop {
+            let line = match input.try_recv() {
+                Ok(line) => line,
+                Err(TryRecvError::Empty) | Err(TryRecvError::Disconnected) => break,
+            };
+            let line = text::trim(&line).to_string();
+            if line == "quit" || line == "exit" || line == "stop" {
+                STOPPING.store(true, Ordering::SeqCst);
+                break;
+            }
+            if line.is_empty() {
+                continue;
+            }
+            // "update": check now and report.
+            if line == "update" {
+                update_now = true;
+                if update_check.is_none() {
+                    update_check = Some(start_check());
+                }
+                write_log("Checking for updates...");
+                continue;
+            }
+            match catch_unwind(AssertUnwindSafe(|| host.command(&line, 0))) {
+                Ok(answer) => write_log(&answer),
+                Err(p) => write_log(&format!("Command failed: {}", panic_text(p))),
+            }
+        }
+        let now = Instant::now();
+        if auto_update && update_check.is_none() && now >= next_update_check {
+            update_check = Some(start_check());
+        }
+        if let Some(receiver) = &update_check {
+            match receiver.try_recv() {
+                Ok(check) => {
+                    next_update_check = now + update_interval;
+                    if check.available {
+                        if update_now || check.version != announced_version {
+                            write_log(&update_message(&check));
+                            announced_version = check.version.clone();
+                        }
+                    } else if update_now {
+                        write_log(&if check.problem.is_empty() {
+                            format!("The server is up to date ({}).", check.version)
+                        } else {
+                            format!("Update check failed: {}.", check.problem)
+                        });
+                    }
+                    update_now = false;
+                    update_check = None;
+                }
+                Err(TryRecvError::Disconnected) => update_check = None,
+                Err(TryRecvError::Empty) => {}
+            }
+        }
+        if now >= next_advertise {
+            next_advertise = now + Duration::from_secs(2);
+            // A name with a bad word in it is never listed (clients hide one too); the server
+            // still runs and players can join with its code.
+            let allowed = !words::contains_bad_words(&host.config.name);
+            if name_allowed != Some(allowed) {
+                if !allowed {
+                    write_log(&format!(
+                        "The server name \"{}\" contains blocked words, so the server is not listed in the server browser. Rename it with: name <new name>",
+                        host.config.name
+                    ));
+                } else if name_allowed.is_some() {
+                    write_log(if host.config.listed {
+                        "The server name is allowed again; the server is listed."
+                    } else {
+                        "The server name is allowed again (the server is still set to unlisted)."
+                    });
+                }
+                name_allowed = Some(allowed);
+            }
+            steam.advertise(&Advertisement {
+                name: host.config.name.clone(),
+                map: host.map_name(),
+                players: host.players(),
+                max_players: host.config.max_players,
+                password: !host.config.password.is_empty(),
+                listed: host.config.listed && allowed,
+                secret: host.secret(),
+            });
+        }
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    write_log("Shutting down.");
+    if let Err(p) = catch_unwind(AssertUnwindSafe(|| host.stop("The server is shutting down."))) {
+        write_log(&format!("Server error: {}", panic_text(p)));
+    }
+    // The networking closes before Steam itself shuts down.
+    drop(host);
+    steam.stop();
+    0
+}
+
+fn main() {
+    // C++ exceptions became panics; the loop reports them as the C++ server reports exceptions.
+    std::panic::set_hook(Box::new(|_| {}));
+    unsafe {
+        libc::signal(libc::SIGINT, on_signal as extern "C" fn(libc::c_int) as libc::sighandler_t);
+        libc::signal(libc::SIGTERM, on_signal as extern "C" fn(libc::c_int) as libc::sighandler_t);
+        libc::signal(libc::SIGHUP, on_signal as extern "C" fn(libc::c_int) as libc::sighandler_t);
+        libc::signal(libc::SIGPIPE, libc::SIG_IGN);
+    }
+    let code = run();
+    std::process::exit(code);
+}

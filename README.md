@@ -1,0 +1,113 @@
+# ReSkate Linux Server
+
+A native Linux port of the [ReSkate](https://github.com/Dingo-Shenanigans/ReSkate) dedicated server,
+rewritten in Rust. It speaks the same network protocol as the Windows `ReSkateServer.exe`, so players
+join it straight from the game – no Wine, no Windows VM.
+
+> ReSkate is a fan project for **skate.** and is not affiliated with or endorsed by Electronic Arts or
+> Full Circle. This repository is an unofficial port of the ReSkate dedicated server and is not
+> maintained by the ReSkate team.
+
+| | |
+|---|---|
+| Based on | ReSkate **1.0.4**, network protocol **38** |
+| Platform | Linux x86_64, glibc 2.31 or newer (Debian 11+, Ubuntu 20.04+, …) |
+| Language | Rust (edition 2021) |
+| License | GPL-3.0 (same as ReSkate) |
+
+## Features
+
+Everything the Windows dedicated server does, except installing its own updates:
+
+- Listed in the in-game server browser (**Multiplayer → Servers**) or joinable by code
+- All console and admin commands, admin commands in chat (`/kick`, `/map`, …)
+- Player votes (map, kick, time of day), parties and party chat (`/party`, `/p`)
+- Speed check and score check (anti-cheat), activity log
+- Object sync / park editor, throwdowns, voice relay with proximity range
+- World layer sync (time of day), park layouts, password, bans
+- Custom maps from a `Mods/` folder
+- Clean shutdown on `quit`, Ctrl+C, SIGTERM and SIGHUP (signs out of Steam first)
+- Ready-made **Pterodactyl egg**
+
+## Quick start
+
+```bash
+# 1. steamclient.so comes from SteamCMD (needs lib32gcc-s1 on Debian/Ubuntu)
+mkdir -p ~/steamcmd && cd ~/steamcmd
+curl -sSL https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz | tar -xz
+./steamcmd.sh +quit
+mkdir -p ~/.steam/sdk64
+ln -sf ~/steamcmd/linux64/steamclient.so ~/.steam/sdk64/steamclient.so
+
+# 2. Download and start the server
+cd ~
+curl -sSLO https://github.com/wildesPepega/ReSkate-Linux-Server/releases/latest/download/ReSkateServer-linux-x64.tar.gz
+tar -xzf ReSkateServer-linux-x64.tar.gz
+cd ReSkateServer-linux-x64
+./ReSkateServer
+```
+
+The first start writes `ReSkateServer.json`. Set at least `name` and `admins`, then restart. Type
+`help` in the console for all commands.
+
+Players connect through Steam's relay network, so **no ports have to be opened**. If you forward
+UDP 27015 and 27016, the server browser also shows the ping and joins are a bit faster.
+
+## Downloads
+
+- **[Latest release](https://github.com/wildesPepega/ReSkate-Linux-Server/releases/latest)** –
+  `ReSkateServer-linux-x64.tar.gz` and `egg-reskate.json`
+- The same build is also committed under [`builds/`](builds/)
+
+The archive contains:
+
+| File | Purpose |
+|---|---|
+| `ReSkateServer` | the server binary |
+| `libsteam_api.so` | Steamworks API, must stay next to the binary |
+| `world-layers.json` | world layer catalogue (time of day etc.), optional |
+| `README.md`, `docs/` | this documentation |
+| `LICENSE.txt`, `licenses/` | GPL-3.0 and third-party licenses |
+
+## Documentation
+
+| Topic | |
+|---|---|
+| [Installation](docs/installation.md) | Running on a plain Linux box, systemd service, ports, custom maps |
+| [Pterodactyl](docs/pterodactyl.md) | Importing and using the egg |
+| [Configuration](docs/configuration.md) | Every field of `ReSkateServer.json` |
+| [Commands](docs/commands.md) | Console, admin and chat commands |
+| [Building](docs/building.md) | Compiling from source, packaging, tests, code layout |
+| [Differences](docs/differences.md) | What differs from the Windows server |
+
+## Building from source
+
+```bash
+cargo build --release      # target/release/ReSkateServer
+cargo test --release       # protocol, codec and rule tests
+./package-linux.sh         # builds dist/ReSkateServer-linux-x64.tar.gz
+```
+
+Needs Rust 1.80+ and a C compiler (for zstd). See [docs/building.md](docs/building.md).
+
+## Repository layout
+
+```
+├── src/                 Rust source code
+├── dist-assets/         files shipped in the package (libsteam_api.so, world-layers.json, licenses)
+├── pterodactyl/         Pterodactyl egg
+├── builds/              prebuilt Linux x64 package
+├── docs/                documentation
+├── package-linux.sh     build + package script
+└── Cargo.toml
+```
+
+## Credits and license
+
+The original ReSkate project, its Windows dedicated server and the network protocol are by the
+[ReSkate team](https://github.com/Dingo-Shenanigans/ReSkate). This port is a derivative work and is
+licensed under the **GNU General Public License v3.0**, see [LICENSE](LICENSE).
+
+`libsteam_api.so` is part of the Steamworks SDK redistributables by Valve Corporation. zstd is
+licensed under the BSD license (`dist-assets/zstd-LICENSE.txt`); Rust crate licenses are listed in
+`licenses/rust-crates.txt` inside the package.

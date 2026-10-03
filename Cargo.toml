@@ -1,0 +1,31 @@
+[package]
+name = "reskate-server"
+version = "1.0.4"
+edition = "2021"
+description = "ReSkate dedicated server, ported to Rust for Linux"
+license = "GPL-3.0-only"
+publish = false
+repository = "https://github.com/wildesPepega/ReSkate-Linux-Server"
+
+[[bin]]
+name = "ReSkateServer"
+path = "src/main.rs"
+
+[dependencies]
+libc = "0.2"
+libloading = "0.8"
+lz4_flex = "0.11"
+zstd-safe = "7"
+serde_json = "1"
+pbkdf2 = { version = "0.12", default-features = false, features = ["hmac"] }
+hmac = "0.12"
+sha2 = "0.10"
+ureq = "2"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+# C++ exceptions become panics that the main loop catches (as the C++ server catches them).
+panic = "unwind"

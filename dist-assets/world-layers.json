@@ -1,0 +1,3945 @@
+{
+ "anchors": [
+  0,
+  103,
+  162,
+  177,
+  195,
+  210
+ ],
+ "nodes": [
+  {
+   "autoload": true,
+   "bundle": "Levels/game/BAM_LevelRoot/_DEBUG_/Debug_Tests",
+   "map": "bam",
+   "parent": -1
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/BAM_LevelRoot/BAM_CoreGameAssets",
+   "map": "bam",
+   "parent": -1
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/game/BAM_LevelRoot/BAM_WaterTerrain_Sub",
+   "map": "bam",
+   "parent": -1
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/BAM_LevelRoot/CitySystems",
+   "map": "bam",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/BAM_LevelRoot/DEV_Screenshots",
+   "map": "bam",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/BAM_LevelRoot/DEV_MapScreenshots",
+   "map": "bam",
+   "parent": 4
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/BAM_LevelRoot/DEV_WorldScreenshots",
+   "map": "bam",
+   "parent": 4
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/DEV_Seasonal_Content",
+   "map": "bam",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/DEV_Seasonal_Content_Season_01",
+   "map": "bam",
+   "parent": 7
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/DTN_Season_01_Disable",
+   "map": "bam",
+   "parent": 8
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/DTN_Season_01_INACTIVE",
+   "map": "bam",
+   "parent": 8
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/DEV_Seasonal_Content_Season_02",
+   "map": "bam",
+   "parent": 7
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/DTN_Season_02_INACTIVE",
+   "map": "bam",
+   "parent": 11
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/DEV_Seasonal_Content_Season_04",
+   "map": "bam",
+   "parent": 7
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/DTN_Season_04_05_Content",
+   "map": "bam",
+   "parent": 13
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/DTN_Season_04_Content",
+   "map": "bam",
+   "parent": 13
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/DTN_Season_04_INACTIVE",
+   "map": "bam",
+   "parent": 13
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/DEV_Seasonal_Content_Season_05",
+   "map": "bam",
+   "parent": 7
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/Game/BAM_LevelRoot/DTN_Season_05_Content",
+   "map": "bam",
+   "parent": 17
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/DTN_Season_05_INACTIVE",
+   "map": "bam",
+   "parent": 17
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/Game/BAM_LevelRoot/DTN_Season_05_PermaContent",
+   "map": "bam",
+   "parent": 17
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/game/BAM_LevelRoot/DEV_Seasonal_Content_Season_06",
+   "map": "bam",
+   "parent": 7
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/Game/BAM_LevelRoot/DTN_Season_06_Content",
+   "map": "bam",
+   "parent": 21
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/game/BAM_LevelRoot/DTN_Season_06_INACTIVE",
+   "map": "bam",
+   "parent": 21
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/game/BAM_LevelRoot/DTN_Season_06_PermaContent",
+   "map": "bam",
+   "parent": 21
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/BAM_LevelRoot/GAMEPLAY_Activities",
+   "map": "bam",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/BAM_LevelRoot/Activities_Season01",
+   "map": "bam",
+   "parent": 25
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/BAM_LevelRoot/Activities_Season02",
+   "map": "bam",
+   "parent": 25
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/BAM_LevelRoot/Activities_Season03",
+   "map": "bam",
+   "parent": 25
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/BAM_LevelRoot/Activities_Season03_5",
+   "map": "bam",
+   "parent": 25
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/BAM_LevelRoot/Activities_Season04",
+   "map": "bam",
+   "parent": 25
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/BAM_LevelRoot/Activities_Season04_5",
+   "map": "bam",
+   "parent": 25
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/BAM_LevelRoot/Activities_Season05",
+   "map": "bam",
+   "parent": 25
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/Game/BAM_LevelRoot/Lighting_Global",
+   "map": "bam",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Lighting_Common_High",
+   "map": "bam",
+   "parent": 33
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Lighting_Common_High_LRV",
+   "map": "bam",
+   "parent": 33
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Lighting_Common_Low",
+   "map": "bam",
+   "parent": 33
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Lighting_Common_Low_LRV",
+   "map": "bam",
+   "parent": 33
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/Game/BAM_LevelRoot/Lighting_Common_Med",
+   "map": "bam",
+   "parent": 33
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/Game/BAM_LevelRoot/Lighting_Static",
+   "map": "bam",
+   "parent": 33
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Lighting_Static_High",
+   "map": "bam",
+   "parent": 39
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/High_TOD_1_Morning",
+   "map": "bam",
+   "parent": 40
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/High_TOD_2_Noon",
+   "map": "bam",
+   "parent": 40
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/High_TOD_3_Afternoon",
+   "map": "bam",
+   "parent": 40
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/High_TOD_4_Evening",
+   "map": "bam",
+   "parent": 40
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/High_TOD_5_Night",
+   "map": "bam",
+   "parent": 40
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/High_TOD_6_WeatherDay",
+   "map": "bam",
+   "parent": 40
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/High_TOD_7_WeatherNight",
+   "map": "bam",
+   "parent": 40
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Lighting_Static_Low",
+   "map": "bam",
+   "parent": 39
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Low_TOD_1_Morning",
+   "map": "bam",
+   "parent": 48
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Low_TOD_2_Noon",
+   "map": "bam",
+   "parent": 48
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Low_TOD_3_Afternoon",
+   "map": "bam",
+   "parent": 48
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Low_TOD_4_Evening",
+   "map": "bam",
+   "parent": 48
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Low_TOD_5_Night",
+   "map": "bam",
+   "parent": 48
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Low_TOD_6_WeatherDay",
+   "map": "bam",
+   "parent": 48
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Low_TOD_7_WeatherNight",
+   "map": "bam",
+   "parent": 48
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Lighting_Static_Medium",
+   "map": "bam",
+   "parent": 39
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Medium_TOD_1_Morning",
+   "map": "bam",
+   "parent": 56
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Medium_TOD_2_Noon",
+   "map": "bam",
+   "parent": 56
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Medium_TOD_3_Afternoon",
+   "map": "bam",
+   "parent": 56
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Medium_TOD_4_Evening",
+   "map": "bam",
+   "parent": 56
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Medium_TOD_5_Night",
+   "map": "bam",
+   "parent": 56
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Medium_TOD_6_WeatherDay",
+   "map": "bam",
+   "parent": 56
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Medium_TOD_7_WeatherNight",
+   "map": "bam",
+   "parent": 56
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/BAM_LevelRoot/LivingWorld_Global",
+   "map": "bam",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/StartPoint_Sublevels",
+   "map": "bam",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/game/BAM_LevelRoot/TOD_1_Morning",
+   "map": "bam",
+   "parent": 65
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/game/BAM_LevelRoot/TOD_2_Noon",
+   "map": "bam",
+   "parent": 65
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/game/BAM_LevelRoot/TOD_3_Afternoon",
+   "map": "bam",
+   "parent": 65
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/game/BAM_LevelRoot/TOD_4_Evening",
+   "map": "bam",
+   "parent": 65
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/game/BAM_LevelRoot/TOD_5_Night",
+   "map": "bam",
+   "parent": 65
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/TOD_6_WeatherDay",
+   "map": "bam",
+   "parent": 65
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/TOD_7_WeatherNight",
+   "map": "bam",
+   "parent": 65
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/TechArt_Global",
+   "map": "bam",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/TechArt_WPS",
+   "map": "bam",
+   "parent": 73
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/BAM_LevelRoot/TerrainSystem",
+   "map": "bam",
+   "parent": -1
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/BAM_LevelRoot/VFX_Global",
+   "map": "bam",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/BAM_LevelRoot/VFX_DST_DT_Plot_08",
+   "map": "bam",
+   "parent": 76
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/Game/BAM_LevelRoot/VFX_Season_04",
+   "map": "bam",
+   "parent": 76
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/BAM_LevelRoot/WPRoot",
+   "map": "bam",
+   "parent": -1
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/Game/BAM_LevelRoot/Z_CommunityParkPacks",
+   "map": "bam",
+   "parent": -1
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/Game/BAM_LevelRoot/Z_Content_Seasonal",
+   "map": "bam",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Season_01_Events",
+   "map": "bam",
+   "parent": 81
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Season_01_Event_01",
+   "map": "bam",
+   "parent": 82
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Season_01_Event_02",
+   "map": "bam",
+   "parent": 82
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Season_01_Event_03",
+   "map": "bam",
+   "parent": 82
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Season_01_Event_04",
+   "map": "bam",
+   "parent": 82
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Season_02_Events",
+   "map": "bam",
+   "parent": 81
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Season_02_Event_01",
+   "map": "bam",
+   "parent": 87
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Season_02_Event_02",
+   "map": "bam",
+   "parent": 87
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Season_02_Event_03",
+   "map": "bam",
+   "parent": 87
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Season_02_Event_04",
+   "map": "bam",
+   "parent": 87
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Season_04_Events",
+   "map": "bam",
+   "parent": 81
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Season_04_Event_01",
+   "map": "bam",
+   "parent": 92
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/Game/BAM_LevelRoot/Season_04_Event_01_Content",
+   "map": "bam",
+   "parent": 93
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Season_04_Event_02",
+   "map": "bam",
+   "parent": 92
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/Game/BAM_LevelRoot/Season_04_Event_02_Content",
+   "map": "bam",
+   "parent": 95
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Season_05_Events",
+   "map": "bam",
+   "parent": 81
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Season_05_Event_01",
+   "map": "bam",
+   "parent": 97
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/Game/BAM_LevelRoot/Season_05_Event_01_Content",
+   "map": "bam",
+   "parent": 98
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/BAM_LevelRoot/Season_05_Event_02",
+   "map": "bam",
+   "parent": 97
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/Game/BAM_LevelRoot/Season_05_Event_02_Content",
+   "map": "bam",
+   "parent": 100
+  },
+  {
+   "autoload": false,
+   "bundle": "Marketing/Levels/Game/BAM_LevelRoot/Marketing",
+   "map": "bam",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_Isle_Of_Grom/_DEBUG_/DEV_Marketing",
+   "map": "grom",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/MKTG_S3_SPLASH",
+   "map": "grom",
+   "parent": 103
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/MKTG_TEMPLATE_SH00",
+   "map": "grom",
+   "parent": 103
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/DEV_Screenshots",
+   "map": "grom",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/DEV_MapScreenshots",
+   "map": "grom",
+   "parent": 106
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/DEV_Seasonal_Content",
+   "map": "grom",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/DEV_Seasonal_Content_Season_03_5",
+   "map": "grom",
+   "parent": 108
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/IOG_Season_03_5_INACTIVE",
+   "map": "grom",
+   "parent": 109
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/IOG_Season_03_5_Victoria_Content",
+   "map": "grom",
+   "parent": 109
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Dev_Seasonal_Content_Season_05",
+   "map": "grom",
+   "parent": 108
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Dev_Seasonal_Content_Season_05_Inactive",
+   "map": "grom",
+   "parent": 108
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/DingoLevel_Isle_Of_Grom/WPRootQuadrant",
+   "map": "grom",
+   "parent": -1
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/IOG_WaterVista",
+   "map": "grom",
+   "parent": -1
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Lighting_Global",
+   "map": "grom",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Lighting_Common_High",
+   "map": "grom",
+   "parent": 116
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Lighting_Common_High_LRV",
+   "map": "grom",
+   "parent": 116
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Lighting_Common_Low",
+   "map": "grom",
+   "parent": 116
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Lighting_Common_Low_LRV",
+   "map": "grom",
+   "parent": 116
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Lighting_Static",
+   "map": "grom",
+   "parent": 116
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Lighting_Static_High",
+   "map": "grom",
+   "parent": 121
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/High_TOD_1_Morning",
+   "map": "grom",
+   "parent": 122
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/High_TOD_2_Noon",
+   "map": "grom",
+   "parent": 122
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/High_TOD_3_Afternoon",
+   "map": "grom",
+   "parent": 122
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/High_TOD_4_Evening",
+   "map": "grom",
+   "parent": 122
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/High_TOD_5_Night",
+   "map": "grom",
+   "parent": 122
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/High_TOD_6_WeatherDay",
+   "map": "grom",
+   "parent": 122
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/High_TOD_7_WeatherNight",
+   "map": "grom",
+   "parent": 122
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Lighting_Static_Low",
+   "map": "grom",
+   "parent": 121
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Low_TOD_1_Morning",
+   "map": "grom",
+   "parent": 130
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Low_TOD_2_Noon",
+   "map": "grom",
+   "parent": 130
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Low_TOD_3_Afternoon",
+   "map": "grom",
+   "parent": 130
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Low_TOD_4_Evening",
+   "map": "grom",
+   "parent": 130
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Low_TOD_5_Night",
+   "map": "grom",
+   "parent": 130
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Low_TOD_6_WeatherDay",
+   "map": "grom",
+   "parent": 130
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Low_TOD_7_WeatherNight",
+   "map": "grom",
+   "parent": 130
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Lighting_Static_Medium",
+   "map": "grom",
+   "parent": 121
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Medium_TOD_1_Morning",
+   "map": "grom",
+   "parent": 138
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Medium_TOD_2_Noon",
+   "map": "grom",
+   "parent": 138
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Medium_TOD_3_Afternoon",
+   "map": "grom",
+   "parent": 138
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Medium_TOD_4_Evening",
+   "map": "grom",
+   "parent": 138
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Medium_TOD_5_Night",
+   "map": "grom",
+   "parent": 138
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Medium_TOD_6_WeatherDay",
+   "map": "grom",
+   "parent": 138
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Medium_TOD_7_WeatherNight",
+   "map": "grom",
+   "parent": 138
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/PostFTUE",
+   "map": "grom",
+   "parent": -1
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/Game/DingoLevel_Isle_Of_Grom/Seasonal_Content",
+   "map": "grom",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Season_05_Content",
+   "map": "grom",
+   "parent": 147
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/Season_05_Content_Remove",
+   "map": "grom",
+   "parent": 147
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/StartPoint_Sublevels",
+   "map": "grom",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/TOD_1_Morning",
+   "map": "grom",
+   "parent": 150
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/TOD_2_Noon",
+   "map": "grom",
+   "parent": 150
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/TOD_3_Afternoon",
+   "map": "grom",
+   "parent": 150
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/TOD_4_Evening",
+   "map": "grom",
+   "parent": 150
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/TOD_5_Night",
+   "map": "grom",
+   "parent": 150
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_Isle_Of_Grom/TOD_6_WeatherDay",
+   "map": "grom",
+   "parent": 150
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_Isle_Of_Grom/TOD_7_WeatherNight",
+   "map": "grom",
+   "parent": 150
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/TechArt",
+   "map": "grom",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/TechArt_WPS",
+   "map": "grom",
+   "parent": 158
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/TerrainSystem",
+   "map": "grom",
+   "parent": -1
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_Isle_Of_Grom/VFX_Global",
+   "map": "grom",
+   "parent": -1
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/Game/DingoLevel_FTUE_Island/Lighting_Global",
+   "map": "ftue",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_FTUE_Island/Lighting_Common_High",
+   "map": "ftue",
+   "parent": 162
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_FTUE_Island/Lighting_Common_High_LRV",
+   "map": "ftue",
+   "parent": 162
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_FTUE_Island/Lighting_Common_Low",
+   "map": "ftue",
+   "parent": 162
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_FTUE_Island/Lighting_Common_Low_LRV",
+   "map": "ftue",
+   "parent": 162
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/Game/DingoLevel_FTUE_Island/Lighting_Static",
+   "map": "ftue",
+   "parent": 162
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_FTUE_Island/Lighting_Static_High",
+   "map": "ftue",
+   "parent": 167
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_FTUE_Island/Lighting_Static_Low",
+   "map": "ftue",
+   "parent": 167
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_FTUE_Island/Lighting_Static_Medium",
+   "map": "ftue",
+   "parent": 167
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_FTUE_Island/PostFTUE",
+   "map": "ftue",
+   "parent": -1
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_FTUE_Island/WP_DST_FTUE_ISLAND",
+   "map": "ftue",
+   "parent": -1
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_FTUE_Island/TerrainSystem",
+   "map": "ftue",
+   "parent": 172
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_FTUE_Island/WP_Buildings",
+   "map": "ftue",
+   "parent": 172
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_FTUE_Island/WP_LocalTools",
+   "map": "ftue",
+   "parent": 172
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_FTUE_Island/WP_Roads",
+   "map": "ftue",
+   "parent": 172
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/_DEBUG_/DEV_Marketing",
+   "map": "stadium_1",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/MKTG_SPLASH_SH01",
+   "map": "stadium_1",
+   "parent": 177
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/MKTG_TEMPLATE_SH00",
+   "map": "stadium_1",
+   "parent": 177
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/DEV_Screenshots",
+   "map": "stadium_1",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/DEV_MapScreenshots",
+   "map": "stadium_1",
+   "parent": 180
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/GAMEPLAY_Activities",
+   "map": "stadium_1",
+   "parent": -1
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/Lighting_Global",
+   "map": "stadium_1",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/Lighting_Common_High",
+   "map": "stadium_1",
+   "parent": 183
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/Lighting_Common_High_LRV",
+   "map": "stadium_1",
+   "parent": 183
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/Lighting_Static",
+   "map": "stadium_1",
+   "parent": 183
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/Lighting_Static_High",
+   "map": "stadium_1",
+   "parent": 186
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/TerrainSystem",
+   "map": "stadium_1",
+   "parent": -1
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/WorldRoot",
+   "map": "stadium_1",
+   "parent": -1
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/WP_ProceduralOutput",
+   "map": "stadium_1",
+   "parent": 189
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/WP_StadiumGeoContainer",
+   "map": "stadium_1",
+   "parent": 189
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/WP_Vista_Long",
+   "map": "stadium_1",
+   "parent": 189
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/WP_Vista_Medium",
+   "map": "stadium_1",
+   "parent": 189
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/Z_Stadium_EventPacks",
+   "map": "stadium_1",
+   "parent": 189
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/DEV_Screenshots",
+   "map": "stadium_2",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/DEV_MapScreenshots",
+   "map": "stadium_2",
+   "parent": 195
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/GAMEPLAY_Activities",
+   "map": "stadium_2",
+   "parent": -1
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/Lighting_Global",
+   "map": "stadium_2",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/Lighting_Common_High",
+   "map": "stadium_2",
+   "parent": 198
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/Lighting_Common_High_LRV",
+   "map": "stadium_2",
+   "parent": 198
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/Lighting_Static",
+   "map": "stadium_2",
+   "parent": 198
+  },
+  {
+   "autoload": false,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/Lighting_Static_High",
+   "map": "stadium_2",
+   "parent": 201
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/WorldRoot",
+   "map": "stadium_2",
+   "parent": -1
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/WP_ProceduralOutput",
+   "map": "stadium_2",
+   "parent": 203
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/WP_StadiumGeoContainer",
+   "map": "stadium_2",
+   "parent": 203
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/ClientOnly",
+   "map": "stadium_2",
+   "parent": 205
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/WP_Vista_Long",
+   "map": "stadium_2",
+   "parent": 203
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/WP_Vista_Medium",
+   "map": "stadium_2",
+   "parent": 203
+  },
+  {
+   "autoload": true,
+   "bundle": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/Z_Stadium_EventPacks",
+   "map": "stadium_2",
+   "parent": 203
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/_DEBUG_/DEV_Marketing",
+   "map": "mpr",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/_DEBUG_/MKTG_TEMPLATE_SH00",
+   "map": "mpr",
+   "parent": 210
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/MKTG_S5SPLASH_SH01",
+   "map": "mpr",
+   "parent": 210
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/Game/DingoLevel_MPR/Activities",
+   "map": "mpr",
+   "parent": -1
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/Game/DingoLevel_MPR/BAM_Vista",
+   "map": "mpr",
+   "parent": -1
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/Game/DingoLevel_MPR/CitySystems",
+   "map": "mpr",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/DEV_Screenshots",
+   "map": "mpr",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/DEV_MapScreenshots",
+   "map": "mpr",
+   "parent": 216
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/Game/DingoLevel_MPR/DingoLevel_MPR/WPRootQuadrant",
+   "map": "mpr",
+   "parent": -1
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/Game/DingoLevel_MPR/Lighting_Global",
+   "map": "mpr",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/Lighting_Common_High",
+   "map": "mpr",
+   "parent": 219
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/Lighting_Common_High_LRV",
+   "map": "mpr",
+   "parent": 219
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/Lighting_Common_Low",
+   "map": "mpr",
+   "parent": 219
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/Lighting_Common_Low_LRV",
+   "map": "mpr",
+   "parent": 219
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/Game/DingoLevel_MPR/Lighting_Common_Med",
+   "map": "mpr",
+   "parent": 219
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/Game/DingoLevel_MPR/Lighting_Static",
+   "map": "mpr",
+   "parent": 219
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/Lighting_Static_High",
+   "map": "mpr",
+   "parent": 225
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/High_TOD_1_Morning",
+   "map": "mpr",
+   "parent": 226
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/High_TOD_2_Noon",
+   "map": "mpr",
+   "parent": 226
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/High_TOD_3_Afternoon",
+   "map": "mpr",
+   "parent": 226
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/High_TOD_4_Evening",
+   "map": "mpr",
+   "parent": 226
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/High_TOD_5_Night",
+   "map": "mpr",
+   "parent": 226
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/High_TOD_6_WeatherDay",
+   "map": "mpr",
+   "parent": 226
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/High_TOD_7_WeatherNight",
+   "map": "mpr",
+   "parent": 226
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/Lighting_Static_Low",
+   "map": "mpr",
+   "parent": 225
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/Low_TOD_1_Morning",
+   "map": "mpr",
+   "parent": 234
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/Low_TOD_2_Noon",
+   "map": "mpr",
+   "parent": 234
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/Low_TOD_3_Afternoon",
+   "map": "mpr",
+   "parent": 234
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/Low_TOD_4_Evening",
+   "map": "mpr",
+   "parent": 234
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/Low_TOD_5_Night",
+   "map": "mpr",
+   "parent": 234
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/Low_TOD_6_WeatherDay",
+   "map": "mpr",
+   "parent": 234
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/Low_TOD_7_WeatherNight",
+   "map": "mpr",
+   "parent": 234
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/Lighting_Static_Medium",
+   "map": "mpr",
+   "parent": 225
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/Medium_TOD_1_Morning",
+   "map": "mpr",
+   "parent": 242
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/Medium_TOD_2_Noon",
+   "map": "mpr",
+   "parent": 242
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/Medium_TOD_3_Afternoon",
+   "map": "mpr",
+   "parent": 242
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/Medium_TOD_4_Evening",
+   "map": "mpr",
+   "parent": 242
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/Medium_TOD_5_Night",
+   "map": "mpr",
+   "parent": 242
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/Medium_TOD_6_WeatherDay",
+   "map": "mpr",
+   "parent": 242
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/Medium_TOD_7_WeatherNight",
+   "map": "mpr",
+   "parent": 242
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/StartPoint_Sublevels",
+   "map": "mpr",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/TOD_1_Morning",
+   "map": "mpr",
+   "parent": 250
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/TOD_2_Noon",
+   "map": "mpr",
+   "parent": 250
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/TOD_3_Afternoon",
+   "map": "mpr",
+   "parent": 250
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/TOD_4_Evening",
+   "map": "mpr",
+   "parent": 250
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/TOD_5_Night",
+   "map": "mpr",
+   "parent": 250
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/TOD_6_WeatherDay",
+   "map": "mpr",
+   "parent": 250
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/TOD_7_WeatherNight",
+   "map": "mpr",
+   "parent": 250
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/TechArt_Global",
+   "map": "mpr",
+   "parent": -1
+  },
+  {
+   "autoload": false,
+   "bundle": "Levels/Game/DingoLevel_MPR/TechArt_WPS",
+   "map": "mpr",
+   "parent": 258
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/Game/DingoLevel_MPR/TerrainSystem",
+   "map": "mpr",
+   "parent": -1
+  },
+  {
+   "autoload": true,
+   "bundle": "Levels/Game/DingoLevel_MPR/VFX_Global",
+   "map": "mpr",
+   "parent": -1
+  }
+ ],
+ "rows": [
+  {
+   "category": "Debug",
+   "detail": "Levels/game/BAM_LevelRoot/_DEBUG_/Debug_Tests",
+   "key": "bam_debug_tests",
+   "label": "Debug Tests",
+   "leaf": 0,
+   "map": "bam",
+   "switch": 0
+  },
+  {
+   "category": "Structure",
+   "detail": "levels/game/BAM_LevelRoot/BAM_CoreGameAssets",
+   "key": "bam_bam_coregameassets",
+   "label": "BAM CoreGameAssets",
+   "leaf": 1,
+   "map": "bam",
+   "switch": 1
+  },
+  {
+   "category": "Structure",
+   "detail": "Levels/game/BAM_LevelRoot/BAM_WaterTerrain_Sub",
+   "key": "bam_bam_waterterrain_sub",
+   "label": "BAM WaterTerrain Sub",
+   "leaf": 2,
+   "map": "bam",
+   "switch": 2
+  },
+  {
+   "category": "World",
+   "detail": "levels/game/BAM_LevelRoot/CitySystems",
+   "key": "bam_citysystems",
+   "label": "CitySystems",
+   "leaf": 3,
+   "map": "bam",
+   "switch": 3
+  },
+  {
+   "category": "Debug",
+   "detail": "levels/game/BAM_LevelRoot/DEV_Screenshots",
+   "key": "bam_dev_screenshots",
+   "label": "DEV Screenshots",
+   "leaf": 4,
+   "map": "bam",
+   "switch": 4
+  },
+  {
+   "category": "Debug",
+   "detail": "levels/game/BAM_LevelRoot/DEV_MapScreenshots",
+   "key": "bam_dev_mapscreenshots",
+   "label": "DEV MapScreenshots",
+   "leaf": 5,
+   "map": "bam",
+   "switch": 5
+  },
+  {
+   "category": "Debug",
+   "detail": "levels/game/BAM_LevelRoot/DEV_WorldScreenshots",
+   "key": "bam_dev_worldscreenshots",
+   "label": "DEV WorldScreenshots",
+   "leaf": 6,
+   "map": "bam",
+   "switch": 6
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/DEV_Seasonal_Content",
+   "key": "bam_dev_seasonal_content",
+   "label": "DEV Seasonal Content",
+   "leaf": 7,
+   "map": "bam",
+   "switch": 7
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/DEV_Seasonal_Content_Season_01",
+   "key": "bam_dev_seasonal_content_season_01",
+   "label": "DEV Seasonal Content Season 01",
+   "leaf": 8,
+   "map": "bam",
+   "switch": 8
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/DTN_Season_01_Disable",
+   "key": "bam_dtn_season_01_disable",
+   "label": "DTN Season 01 Disable",
+   "leaf": 9,
+   "map": "bam",
+   "switch": 9
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/DTN_Season_01_INACTIVE",
+   "key": "bam_dtn_season_01_inactive",
+   "label": "DTN Season 01 INACTIVE",
+   "leaf": 10,
+   "map": "bam",
+   "switch": 10
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/DEV_Seasonal_Content_Season_02",
+   "key": "bam_dev_seasonal_content_season_02",
+   "label": "DEV Seasonal Content Season 02",
+   "leaf": 11,
+   "map": "bam",
+   "switch": 11
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/DTN_Season_02_INACTIVE",
+   "key": "bam_dtn_season_02_inactive",
+   "label": "DTN Season 02 INACTIVE",
+   "leaf": 12,
+   "map": "bam",
+   "switch": 12
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/DEV_Seasonal_Content_Season_04",
+   "key": "bam_dev_seasonal_content_season_04",
+   "label": "DEV Seasonal Content Season 04",
+   "leaf": 13,
+   "map": "bam",
+   "switch": 13
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/DTN_Season_04_05_Content",
+   "key": "bam_dtn_season_04_05_content",
+   "label": "DTN Season 04 05 Content",
+   "leaf": 14,
+   "map": "bam",
+   "switch": 14
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/DTN_Season_04_Content",
+   "key": "bam_dtn_season_04_content",
+   "label": "DTN Season 04 Content",
+   "leaf": 15,
+   "map": "bam",
+   "switch": 15
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/DTN_Season_04_INACTIVE",
+   "key": "bam_dtn_season_04_inactive",
+   "label": "DTN Season 04 INACTIVE",
+   "leaf": 16,
+   "map": "bam",
+   "switch": 16
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/DEV_Seasonal_Content_Season_05",
+   "key": "bam_dev_seasonal_content_season_05",
+   "label": "DEV Seasonal Content Season 05",
+   "leaf": 17,
+   "map": "bam",
+   "switch": 17
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/DTN_Season_05_Content",
+   "key": "bam_dtn_season_05_content",
+   "label": "DTN Season 05 Content",
+   "leaf": 18,
+   "map": "bam",
+   "switch": 18
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/DTN_Season_05_INACTIVE",
+   "key": "bam_dtn_season_05_inactive",
+   "label": "DTN Season 05 INACTIVE",
+   "leaf": 19,
+   "map": "bam",
+   "switch": 19
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/DTN_Season_05_PermaContent",
+   "key": "bam_dtn_season_05_permacontent",
+   "label": "DTN Season 05 PermaContent",
+   "leaf": 20,
+   "map": "bam",
+   "switch": 20
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/game/BAM_LevelRoot/DEV_Seasonal_Content_Season_06",
+   "key": "bam_dev_seasonal_content_season_06",
+   "label": "DEV Seasonal Content Season 06",
+   "leaf": 21,
+   "map": "bam",
+   "switch": 21
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/DTN_Season_06_Content",
+   "key": "bam_dtn_season_06_content",
+   "label": "DTN Season 06 Content",
+   "leaf": 22,
+   "map": "bam",
+   "switch": 22
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/game/BAM_LevelRoot/DTN_Season_06_INACTIVE",
+   "key": "bam_dtn_season_06_inactive",
+   "label": "DTN Season 06 INACTIVE",
+   "leaf": 23,
+   "map": "bam",
+   "switch": 23
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/game/BAM_LevelRoot/DTN_Season_06_PermaContent",
+   "key": "bam_dtn_season_06_permacontent",
+   "label": "DTN Season 06 PermaContent",
+   "leaf": 24,
+   "map": "bam",
+   "switch": 24
+  },
+  {
+   "category": "Activities",
+   "detail": "levels/game/BAM_LevelRoot/GAMEPLAY_Activities",
+   "key": "bam_gameplay_activities",
+   "label": "GAMEPLAY Activities",
+   "leaf": 25,
+   "map": "bam",
+   "switch": 25
+  },
+  {
+   "category": "Activities",
+   "detail": "levels/game/BAM_LevelRoot/Activities_Season01",
+   "key": "bam_activities_season01",
+   "label": "Activities Season01",
+   "leaf": 26,
+   "map": "bam",
+   "switch": 26
+  },
+  {
+   "category": "Activities",
+   "detail": "levels/game/BAM_LevelRoot/Activities_Season02",
+   "key": "bam_activities_season02",
+   "label": "Activities Season02",
+   "leaf": 27,
+   "map": "bam",
+   "switch": 27
+  },
+  {
+   "category": "Activities",
+   "detail": "levels/game/BAM_LevelRoot/Activities_Season03",
+   "key": "bam_activities_season03",
+   "label": "Activities Season03",
+   "leaf": 28,
+   "map": "bam",
+   "switch": 28
+  },
+  {
+   "category": "Activities",
+   "detail": "levels/game/BAM_LevelRoot/Activities_Season03_5",
+   "key": "bam_activities_season03_5",
+   "label": "Activities Season03 5",
+   "leaf": 29,
+   "map": "bam",
+   "switch": 29
+  },
+  {
+   "category": "Activities",
+   "detail": "levels/game/BAM_LevelRoot/Activities_Season04",
+   "key": "bam_activities_season04",
+   "label": "Activities Season04",
+   "leaf": 30,
+   "map": "bam",
+   "switch": 30
+  },
+  {
+   "category": "Activities",
+   "detail": "levels/game/BAM_LevelRoot/Activities_Season04_5",
+   "key": "bam_activities_season04_5",
+   "label": "Activities Season04 5",
+   "leaf": 31,
+   "map": "bam",
+   "switch": 31
+  },
+  {
+   "category": "Activities",
+   "detail": "levels/game/BAM_LevelRoot/Activities_Season05",
+   "key": "bam_activities_season05",
+   "label": "Activities Season05",
+   "leaf": 32,
+   "map": "bam",
+   "switch": 32
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/Lighting_Global",
+   "key": "bam_lighting_global",
+   "label": "Lighting Global",
+   "leaf": 33,
+   "map": "bam",
+   "switch": 33
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/Lighting_Common_High",
+   "key": "bam_lighting_common_high",
+   "label": "Lighting Common High",
+   "leaf": 34,
+   "map": "bam",
+   "switch": 34
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/Lighting_Common_High_LRV",
+   "key": "bam_lighting_common_high_lrv",
+   "label": "Lighting Common High LRV",
+   "leaf": 35,
+   "map": "bam",
+   "switch": 35
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/Lighting_Common_Low",
+   "key": "bam_lighting_common_low",
+   "label": "Lighting Common Low",
+   "leaf": 36,
+   "map": "bam",
+   "switch": 36
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/Lighting_Common_Low_LRV",
+   "key": "bam_lighting_common_low_lrv",
+   "label": "Lighting Common Low LRV",
+   "leaf": 37,
+   "map": "bam",
+   "switch": 37
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/Lighting_Common_Med",
+   "key": "bam_lighting_common_med",
+   "label": "Lighting Common Med",
+   "leaf": 38,
+   "map": "bam",
+   "switch": 38
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/Lighting_Static",
+   "key": "bam_lighting_static",
+   "label": "Lighting Static",
+   "leaf": 39,
+   "map": "bam",
+   "switch": 39
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/Lighting_Static_High",
+   "key": "bam_lighting_static_high",
+   "label": "Lighting Static High",
+   "leaf": 40,
+   "map": "bam",
+   "switch": 40
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/High_TOD_1_Morning",
+   "key": "bam_high_tod_1_morning",
+   "label": "High TOD 1 Morning",
+   "leaf": 41,
+   "map": "bam",
+   "switch": 41
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/High_TOD_2_Noon",
+   "key": "bam_high_tod_2_noon",
+   "label": "High TOD 2 Noon",
+   "leaf": 42,
+   "map": "bam",
+   "switch": 42
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/High_TOD_3_Afternoon",
+   "key": "bam_high_tod_3_afternoon",
+   "label": "High TOD 3 Afternoon",
+   "leaf": 43,
+   "map": "bam",
+   "switch": 43
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/High_TOD_4_Evening",
+   "key": "bam_high_tod_4_evening",
+   "label": "High TOD 4 Evening",
+   "leaf": 44,
+   "map": "bam",
+   "switch": 44
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/High_TOD_5_Night",
+   "key": "bam_high_tod_5_night",
+   "label": "High TOD 5 Night",
+   "leaf": 45,
+   "map": "bam",
+   "switch": 45
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/High_TOD_6_WeatherDay",
+   "key": "bam_high_tod_6_weatherday",
+   "label": "High TOD 6 WeatherDay",
+   "leaf": 46,
+   "map": "bam",
+   "switch": 46
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/High_TOD_7_WeatherNight",
+   "key": "bam_high_tod_7_weathernight",
+   "label": "High TOD 7 WeatherNight",
+   "leaf": 47,
+   "map": "bam",
+   "switch": 47
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/Lighting_Static_Low",
+   "key": "bam_lighting_static_low",
+   "label": "Lighting Static Low",
+   "leaf": 48,
+   "map": "bam",
+   "switch": 48
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/Low_TOD_1_Morning",
+   "key": "bam_low_tod_1_morning",
+   "label": "Low TOD 1 Morning",
+   "leaf": 49,
+   "map": "bam",
+   "switch": 49
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/Low_TOD_2_Noon",
+   "key": "bam_low_tod_2_noon",
+   "label": "Low TOD 2 Noon",
+   "leaf": 50,
+   "map": "bam",
+   "switch": 50
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/Low_TOD_3_Afternoon",
+   "key": "bam_low_tod_3_afternoon",
+   "label": "Low TOD 3 Afternoon",
+   "leaf": 51,
+   "map": "bam",
+   "switch": 51
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/Low_TOD_4_Evening",
+   "key": "bam_low_tod_4_evening",
+   "label": "Low TOD 4 Evening",
+   "leaf": 52,
+   "map": "bam",
+   "switch": 52
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/Low_TOD_5_Night",
+   "key": "bam_low_tod_5_night",
+   "label": "Low TOD 5 Night",
+   "leaf": 53,
+   "map": "bam",
+   "switch": 53
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/Low_TOD_6_WeatherDay",
+   "key": "bam_low_tod_6_weatherday",
+   "label": "Low TOD 6 WeatherDay",
+   "leaf": 54,
+   "map": "bam",
+   "switch": 54
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/Low_TOD_7_WeatherNight",
+   "key": "bam_low_tod_7_weathernight",
+   "label": "Low TOD 7 WeatherNight",
+   "leaf": 55,
+   "map": "bam",
+   "switch": 55
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/Lighting_Static_Medium",
+   "key": "bam_lighting_static_medium",
+   "label": "Lighting Static Medium",
+   "leaf": 56,
+   "map": "bam",
+   "switch": 56
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/Medium_TOD_1_Morning",
+   "key": "bam_medium_tod_1_morning",
+   "label": "Medium TOD 1 Morning",
+   "leaf": 57,
+   "map": "bam",
+   "switch": 57
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/Medium_TOD_2_Noon",
+   "key": "bam_medium_tod_2_noon",
+   "label": "Medium TOD 2 Noon",
+   "leaf": 58,
+   "map": "bam",
+   "switch": 58
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/Medium_TOD_3_Afternoon",
+   "key": "bam_medium_tod_3_afternoon",
+   "label": "Medium TOD 3 Afternoon",
+   "leaf": 59,
+   "map": "bam",
+   "switch": 59
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/Medium_TOD_4_Evening",
+   "key": "bam_medium_tod_4_evening",
+   "label": "Medium TOD 4 Evening",
+   "leaf": 60,
+   "map": "bam",
+   "switch": 60
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/Medium_TOD_5_Night",
+   "key": "bam_medium_tod_5_night",
+   "label": "Medium TOD 5 Night",
+   "leaf": 61,
+   "map": "bam",
+   "switch": 61
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/Medium_TOD_6_WeatherDay",
+   "key": "bam_medium_tod_6_weatherday",
+   "label": "Medium TOD 6 WeatherDay",
+   "leaf": 62,
+   "map": "bam",
+   "switch": 62
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/Medium_TOD_7_WeatherNight",
+   "key": "bam_medium_tod_7_weathernight",
+   "label": "Medium TOD 7 WeatherNight",
+   "leaf": 63,
+   "map": "bam",
+   "switch": 63
+  },
+  {
+   "category": "World",
+   "detail": "levels/game/BAM_LevelRoot/LivingWorld_Global",
+   "key": "bam_livingworld_global",
+   "label": "LivingWorld Global",
+   "leaf": 64,
+   "map": "bam",
+   "switch": 64
+  },
+  {
+   "category": "World",
+   "detail": "Levels/Game/BAM_LevelRoot/StartPoint_Sublevels",
+   "key": "bam_startpoint_sublevels",
+   "label": "StartPoint Sublevels",
+   "leaf": 65,
+   "map": "bam",
+   "switch": 65
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/game/BAM_LevelRoot/TOD_1_Morning",
+   "key": "bam_tod_1_morning",
+   "label": "TOD 1 Morning",
+   "leaf": 66,
+   "map": "bam",
+   "switch": 66
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/game/BAM_LevelRoot/TOD_2_Noon",
+   "key": "bam_tod_2_noon",
+   "label": "TOD 2 Noon",
+   "leaf": 67,
+   "map": "bam",
+   "switch": 67
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/game/BAM_LevelRoot/TOD_3_Afternoon",
+   "key": "bam_tod_3_afternoon",
+   "label": "TOD 3 Afternoon",
+   "leaf": 68,
+   "map": "bam",
+   "switch": 68
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/game/BAM_LevelRoot/TOD_4_Evening",
+   "key": "bam_tod_4_evening",
+   "label": "TOD 4 Evening",
+   "leaf": 69,
+   "map": "bam",
+   "switch": 69
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/game/BAM_LevelRoot/TOD_5_Night",
+   "key": "bam_tod_5_night",
+   "label": "TOD 5 Night",
+   "leaf": 70,
+   "map": "bam",
+   "switch": 70
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/TOD_6_WeatherDay",
+   "key": "bam_tod_6_weatherday",
+   "label": "TOD 6 WeatherDay",
+   "leaf": 71,
+   "map": "bam",
+   "switch": 71
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/BAM_LevelRoot/TOD_7_WeatherNight",
+   "key": "bam_tod_7_weathernight",
+   "label": "TOD 7 WeatherNight",
+   "leaf": 72,
+   "map": "bam",
+   "switch": 72
+  },
+  {
+   "category": "Debug",
+   "detail": "Levels/Game/BAM_LevelRoot/TechArt_Global",
+   "key": "bam_techart_global",
+   "label": "TechArt Global",
+   "leaf": 73,
+   "map": "bam",
+   "switch": 73
+  },
+  {
+   "category": "Debug",
+   "detail": "Levels/Game/BAM_LevelRoot/TechArt_WPS",
+   "key": "bam_techart_wps",
+   "label": "TechArt WPS",
+   "leaf": 74,
+   "map": "bam",
+   "switch": 74
+  },
+  {
+   "category": "Structure",
+   "detail": "levels/game/BAM_LevelRoot/TerrainSystem",
+   "key": "bam_terrainsystem",
+   "label": "TerrainSystem",
+   "leaf": 75,
+   "map": "bam",
+   "switch": 75
+  },
+  {
+   "category": "World",
+   "detail": "levels/game/BAM_LevelRoot/VFX_Global",
+   "key": "bam_vfx_global",
+   "label": "VFX Global",
+   "leaf": 76,
+   "map": "bam",
+   "switch": 76
+  },
+  {
+   "category": "World",
+   "detail": "levels/game/BAM_LevelRoot/VFX_DST_DT_Plot_08",
+   "key": "bam_vfx_dst_dt_plot_08",
+   "label": "VFX DST DT Plot 08",
+   "leaf": 77,
+   "map": "bam",
+   "switch": 77
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/VFX_Season_04",
+   "key": "bam_vfx_season_04",
+   "label": "VFX Season 04",
+   "leaf": 78,
+   "map": "bam",
+   "switch": 78
+  },
+  {
+   "category": "Structure",
+   "detail": "levels/game/BAM_LevelRoot/WPRoot",
+   "key": "bam_wproot",
+   "label": "WPRoot",
+   "leaf": 79,
+   "map": "bam",
+   "switch": 79
+  },
+  {
+   "category": "Parks",
+   "detail": "Levels/Game/BAM_LevelRoot/Z_CommunityParkPacks",
+   "key": "bam_z_communityparkpacks",
+   "label": "Z CommunityParkPacks",
+   "leaf": 80,
+   "map": "bam",
+   "switch": 80
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/Z_Content_Seasonal",
+   "key": "bam_z_content_seasonal",
+   "label": "Z Content Seasonal",
+   "leaf": 81,
+   "map": "bam",
+   "switch": 81
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/Season_01_Events",
+   "key": "bam_season_01_events",
+   "label": "Season 01 Events",
+   "leaf": 82,
+   "map": "bam",
+   "switch": 82
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/Season_01_Event_01",
+   "key": "bam_season_01_event_01",
+   "label": "Season 01 Event 01",
+   "leaf": 83,
+   "map": "bam",
+   "switch": 83
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/Season_01_Event_02",
+   "key": "bam_season_01_event_02",
+   "label": "Season 01 Event 02",
+   "leaf": 84,
+   "map": "bam",
+   "switch": 84
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/Season_01_Event_03",
+   "key": "bam_season_01_event_03",
+   "label": "Season 01 Event 03",
+   "leaf": 85,
+   "map": "bam",
+   "switch": 85
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/Season_01_Event_04",
+   "key": "bam_season_01_event_04",
+   "label": "Season 01 Event 04",
+   "leaf": 86,
+   "map": "bam",
+   "switch": 86
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/Season_02_Events",
+   "key": "bam_season_02_events",
+   "label": "Season 02 Events",
+   "leaf": 87,
+   "map": "bam",
+   "switch": 87
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/Season_02_Event_01",
+   "key": "bam_season_02_event_01",
+   "label": "Season 02 Event 01",
+   "leaf": 88,
+   "map": "bam",
+   "switch": 88
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/Season_02_Event_02",
+   "key": "bam_season_02_event_02",
+   "label": "Season 02 Event 02",
+   "leaf": 89,
+   "map": "bam",
+   "switch": 89
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/Season_02_Event_03",
+   "key": "bam_season_02_event_03",
+   "label": "Season 02 Event 03",
+   "leaf": 90,
+   "map": "bam",
+   "switch": 90
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/Season_02_Event_04",
+   "key": "bam_season_02_event_04",
+   "label": "Season 02 Event 04",
+   "leaf": 91,
+   "map": "bam",
+   "switch": 91
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/Season_04_Events",
+   "key": "bam_season_04_events",
+   "label": "Season 04 Events",
+   "leaf": 92,
+   "map": "bam",
+   "switch": 92
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/Season_04_Event_01",
+   "key": "bam_season_04_event_01",
+   "label": "Season 04 Event 01",
+   "leaf": 93,
+   "map": "bam",
+   "switch": 93
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/Season_04_Event_01_Content",
+   "key": "bam_season_04_event_01_content",
+   "label": "Season 04 Event 01 Content",
+   "leaf": 94,
+   "map": "bam",
+   "switch": 94
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/Season_04_Event_02",
+   "key": "bam_season_04_event_02",
+   "label": "Season 04 Event 02",
+   "leaf": 95,
+   "map": "bam",
+   "switch": 95
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/Season_04_Event_02_Content",
+   "key": "bam_season_04_event_02_content",
+   "label": "Season 04 Event 02 Content",
+   "leaf": 96,
+   "map": "bam",
+   "switch": 96
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/Season_05_Events",
+   "key": "bam_season_05_events",
+   "label": "Season 05 Events",
+   "leaf": 97,
+   "map": "bam",
+   "switch": 97
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/Season_05_Event_01",
+   "key": "bam_season_05_event_01",
+   "label": "Season 05 Event 01",
+   "leaf": 98,
+   "map": "bam",
+   "switch": 98
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/Season_05_Event_01_Content",
+   "key": "bam_season_05_event_01_content",
+   "label": "Season 05 Event 01 Content",
+   "leaf": 99,
+   "map": "bam",
+   "switch": 99
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/Season_05_Event_02",
+   "key": "bam_season_05_event_02",
+   "label": "Season 05 Event 02",
+   "leaf": 100,
+   "map": "bam",
+   "switch": 100
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/BAM_LevelRoot/Season_05_Event_02_Content",
+   "key": "bam_season_05_event_02_content",
+   "label": "Season 05 Event 02 Content",
+   "leaf": 101,
+   "map": "bam",
+   "switch": 101
+  },
+  {
+   "category": "Debug",
+   "detail": "Marketing/Levels/Game/BAM_LevelRoot/Marketing",
+   "key": "bam_marketing",
+   "label": "Marketing",
+   "leaf": 102,
+   "map": "bam",
+   "switch": 102
+  },
+  {
+   "category": "Debug",
+   "detail": "Levels/Game/DingoLevel_Isle_Of_Grom/_DEBUG_/DEV_Marketing",
+   "key": "grom_dev_marketing",
+   "label": "DEV Marketing",
+   "leaf": 103,
+   "map": "grom",
+   "switch": 103
+  },
+  {
+   "category": "Debug",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/MKTG_S3_SPLASH",
+   "key": "grom_mktg_s3_splash",
+   "label": "MKTG S3 SPLASH",
+   "leaf": 104,
+   "map": "grom",
+   "switch": 104
+  },
+  {
+   "category": "Debug",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/MKTG_TEMPLATE_SH00",
+   "key": "grom_mktg_template_sh00",
+   "label": "MKTG TEMPLATE SH00",
+   "leaf": 105,
+   "map": "grom",
+   "switch": 105
+  },
+  {
+   "category": "Debug",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/DEV_Screenshots",
+   "key": "grom_dev_screenshots",
+   "label": "DEV Screenshots",
+   "leaf": 106,
+   "map": "grom",
+   "switch": 106
+  },
+  {
+   "category": "Debug",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/DEV_MapScreenshots",
+   "key": "grom_dev_mapscreenshots",
+   "label": "DEV MapScreenshots",
+   "leaf": 107,
+   "map": "grom",
+   "switch": 107
+  },
+  {
+   "category": "Seasonal",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/DEV_Seasonal_Content",
+   "key": "grom_dev_seasonal_content",
+   "label": "DEV Seasonal Content",
+   "leaf": 108,
+   "map": "grom",
+   "switch": 108
+  },
+  {
+   "category": "Seasonal",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/DEV_Seasonal_Content_Season_03_5",
+   "key": "grom_dev_seasonal_content_season_03_5",
+   "label": "DEV Seasonal Content Season 03 5",
+   "leaf": 109,
+   "map": "grom",
+   "switch": 109
+  },
+  {
+   "category": "Seasonal",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/IOG_Season_03_5_INACTIVE",
+   "key": "grom_iog_season_03_5_inactive",
+   "label": "IOG Season 03 5 INACTIVE",
+   "leaf": 110,
+   "map": "grom",
+   "switch": 110
+  },
+  {
+   "category": "Seasonal",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/IOG_Season_03_5_Victoria_Content",
+   "key": "grom_iog_season_03_5_victoria_content",
+   "label": "IOG Season 03 5 Victoria Content",
+   "leaf": 111,
+   "map": "grom",
+   "switch": 111
+  },
+  {
+   "category": "Seasonal",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Dev_Seasonal_Content_Season_05",
+   "key": "grom_dev_seasonal_content_season_05",
+   "label": "Dev Seasonal Content Season 05",
+   "leaf": 112,
+   "map": "grom",
+   "switch": 112
+  },
+  {
+   "category": "Seasonal",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Dev_Seasonal_Content_Season_05_Inactive",
+   "key": "grom_dev_seasonal_content_season_05_inactive",
+   "label": "Dev Seasonal Content Season 05 Inactive",
+   "leaf": 113,
+   "map": "grom",
+   "switch": 113
+  },
+  {
+   "category": "Structure",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/DingoLevel_Isle_Of_Grom/WPRootQuadrant",
+   "key": "grom_wprootquadrant",
+   "label": "WPRootQuadrant",
+   "leaf": 114,
+   "map": "grom",
+   "switch": 114
+  },
+  {
+   "category": "Structure",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/IOG_WaterVista",
+   "key": "grom_iog_watervista",
+   "label": "IOG WaterVista",
+   "leaf": 115,
+   "map": "grom",
+   "switch": 115
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Lighting_Global",
+   "key": "grom_lighting_global",
+   "label": "Lighting Global",
+   "leaf": 116,
+   "map": "grom",
+   "switch": 116
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Lighting_Common_High",
+   "key": "grom_lighting_common_high",
+   "label": "Lighting Common High",
+   "leaf": 117,
+   "map": "grom",
+   "switch": 117
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Lighting_Common_High_LRV",
+   "key": "grom_lighting_common_high_lrv",
+   "label": "Lighting Common High LRV",
+   "leaf": 118,
+   "map": "grom",
+   "switch": 118
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Lighting_Common_Low",
+   "key": "grom_lighting_common_low",
+   "label": "Lighting Common Low",
+   "leaf": 119,
+   "map": "grom",
+   "switch": 119
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Lighting_Common_Low_LRV",
+   "key": "grom_lighting_common_low_lrv",
+   "label": "Lighting Common Low LRV",
+   "leaf": 120,
+   "map": "grom",
+   "switch": 120
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Lighting_Static",
+   "key": "grom_lighting_static",
+   "label": "Lighting Static",
+   "leaf": 121,
+   "map": "grom",
+   "switch": 121
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Lighting_Static_High",
+   "key": "grom_lighting_static_high",
+   "label": "Lighting Static High",
+   "leaf": 122,
+   "map": "grom",
+   "switch": 122
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/High_TOD_1_Morning",
+   "key": "grom_high_tod_1_morning",
+   "label": "High TOD 1 Morning",
+   "leaf": 123,
+   "map": "grom",
+   "switch": 123
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/High_TOD_2_Noon",
+   "key": "grom_high_tod_2_noon",
+   "label": "High TOD 2 Noon",
+   "leaf": 124,
+   "map": "grom",
+   "switch": 124
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/High_TOD_3_Afternoon",
+   "key": "grom_high_tod_3_afternoon",
+   "label": "High TOD 3 Afternoon",
+   "leaf": 125,
+   "map": "grom",
+   "switch": 125
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/High_TOD_4_Evening",
+   "key": "grom_high_tod_4_evening",
+   "label": "High TOD 4 Evening",
+   "leaf": 126,
+   "map": "grom",
+   "switch": 126
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/High_TOD_5_Night",
+   "key": "grom_high_tod_5_night",
+   "label": "High TOD 5 Night",
+   "leaf": 127,
+   "map": "grom",
+   "switch": 127
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/High_TOD_6_WeatherDay",
+   "key": "grom_high_tod_6_weatherday",
+   "label": "High TOD 6 WeatherDay",
+   "leaf": 128,
+   "map": "grom",
+   "switch": 128
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/High_TOD_7_WeatherNight",
+   "key": "grom_high_tod_7_weathernight",
+   "label": "High TOD 7 WeatherNight",
+   "leaf": 129,
+   "map": "grom",
+   "switch": 129
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Lighting_Static_Low",
+   "key": "grom_lighting_static_low",
+   "label": "Lighting Static Low",
+   "leaf": 130,
+   "map": "grom",
+   "switch": 130
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Low_TOD_1_Morning",
+   "key": "grom_low_tod_1_morning",
+   "label": "Low TOD 1 Morning",
+   "leaf": 131,
+   "map": "grom",
+   "switch": 131
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Low_TOD_2_Noon",
+   "key": "grom_low_tod_2_noon",
+   "label": "Low TOD 2 Noon",
+   "leaf": 132,
+   "map": "grom",
+   "switch": 132
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Low_TOD_3_Afternoon",
+   "key": "grom_low_tod_3_afternoon",
+   "label": "Low TOD 3 Afternoon",
+   "leaf": 133,
+   "map": "grom",
+   "switch": 133
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Low_TOD_4_Evening",
+   "key": "grom_low_tod_4_evening",
+   "label": "Low TOD 4 Evening",
+   "leaf": 134,
+   "map": "grom",
+   "switch": 134
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Low_TOD_5_Night",
+   "key": "grom_low_tod_5_night",
+   "label": "Low TOD 5 Night",
+   "leaf": 135,
+   "map": "grom",
+   "switch": 135
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Low_TOD_6_WeatherDay",
+   "key": "grom_low_tod_6_weatherday",
+   "label": "Low TOD 6 WeatherDay",
+   "leaf": 136,
+   "map": "grom",
+   "switch": 136
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Low_TOD_7_WeatherNight",
+   "key": "grom_low_tod_7_weathernight",
+   "label": "Low TOD 7 WeatherNight",
+   "leaf": 137,
+   "map": "grom",
+   "switch": 137
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Lighting_Static_Medium",
+   "key": "grom_lighting_static_medium",
+   "label": "Lighting Static Medium",
+   "leaf": 138,
+   "map": "grom",
+   "switch": 138
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Medium_TOD_1_Morning",
+   "key": "grom_medium_tod_1_morning",
+   "label": "Medium TOD 1 Morning",
+   "leaf": 139,
+   "map": "grom",
+   "switch": 139
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Medium_TOD_2_Noon",
+   "key": "grom_medium_tod_2_noon",
+   "label": "Medium TOD 2 Noon",
+   "leaf": 140,
+   "map": "grom",
+   "switch": 140
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Medium_TOD_3_Afternoon",
+   "key": "grom_medium_tod_3_afternoon",
+   "label": "Medium TOD 3 Afternoon",
+   "leaf": 141,
+   "map": "grom",
+   "switch": 141
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Medium_TOD_4_Evening",
+   "key": "grom_medium_tod_4_evening",
+   "label": "Medium TOD 4 Evening",
+   "leaf": 142,
+   "map": "grom",
+   "switch": 142
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Medium_TOD_5_Night",
+   "key": "grom_medium_tod_5_night",
+   "label": "Medium TOD 5 Night",
+   "leaf": 143,
+   "map": "grom",
+   "switch": 143
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Medium_TOD_6_WeatherDay",
+   "key": "grom_medium_tod_6_weatherday",
+   "label": "Medium TOD 6 WeatherDay",
+   "leaf": 144,
+   "map": "grom",
+   "switch": 144
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Medium_TOD_7_WeatherNight",
+   "key": "grom_medium_tod_7_weathernight",
+   "label": "Medium TOD 7 WeatherNight",
+   "leaf": 145,
+   "map": "grom",
+   "switch": 145
+  },
+  {
+   "category": "World",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/PostFTUE",
+   "key": "grom_postftue",
+   "label": "PostFTUE",
+   "leaf": 146,
+   "map": "grom",
+   "switch": 146
+  },
+  {
+   "category": "Seasonal",
+   "detail": "Levels/Game/DingoLevel_Isle_Of_Grom/Seasonal_Content",
+   "key": "grom_seasonal_content",
+   "label": "Seasonal Content",
+   "leaf": 147,
+   "map": "grom",
+   "switch": 147
+  },
+  {
+   "category": "Seasonal",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Season_05_Content",
+   "key": "grom_season_05_content",
+   "label": "Season 05 Content",
+   "leaf": 148,
+   "map": "grom",
+   "switch": 148
+  },
+  {
+   "category": "Seasonal",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/Season_05_Content_Remove",
+   "key": "grom_season_05_content_remove",
+   "label": "Season 05 Content Remove",
+   "leaf": 149,
+   "map": "grom",
+   "switch": 149
+  },
+  {
+   "category": "World",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/StartPoint_Sublevels",
+   "key": "grom_startpoint_sublevels",
+   "label": "StartPoint Sublevels",
+   "leaf": 150,
+   "map": "grom",
+   "switch": 150
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/TOD_1_Morning",
+   "key": "grom_tod_1_morning",
+   "label": "TOD 1 Morning",
+   "leaf": 151,
+   "map": "grom",
+   "switch": 151
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/TOD_2_Noon",
+   "key": "grom_tod_2_noon",
+   "label": "TOD 2 Noon",
+   "leaf": 152,
+   "map": "grom",
+   "switch": 152
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/TOD_3_Afternoon",
+   "key": "grom_tod_3_afternoon",
+   "label": "TOD 3 Afternoon",
+   "leaf": 153,
+   "map": "grom",
+   "switch": 153
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/TOD_4_Evening",
+   "key": "grom_tod_4_evening",
+   "label": "TOD 4 Evening",
+   "leaf": 154,
+   "map": "grom",
+   "switch": 154
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/TOD_5_Night",
+   "key": "grom_tod_5_night",
+   "label": "TOD 5 Night",
+   "leaf": 155,
+   "map": "grom",
+   "switch": 155
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_Isle_Of_Grom/TOD_6_WeatherDay",
+   "key": "grom_tod_6_weatherday",
+   "label": "TOD 6 WeatherDay",
+   "leaf": 156,
+   "map": "grom",
+   "switch": 156
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_Isle_Of_Grom/TOD_7_WeatherNight",
+   "key": "grom_tod_7_weathernight",
+   "label": "TOD 7 WeatherNight",
+   "leaf": 157,
+   "map": "grom",
+   "switch": 157
+  },
+  {
+   "category": "Debug",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/TechArt",
+   "key": "grom_techart",
+   "label": "TechArt",
+   "leaf": 158,
+   "map": "grom",
+   "switch": 158
+  },
+  {
+   "category": "Debug",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/TechArt_WPS",
+   "key": "grom_techart_wps",
+   "label": "TechArt WPS",
+   "leaf": 159,
+   "map": "grom",
+   "switch": 159
+  },
+  {
+   "category": "Structure",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/TerrainSystem",
+   "key": "grom_terrainsystem",
+   "label": "TerrainSystem",
+   "leaf": 160,
+   "map": "grom",
+   "switch": 160
+  },
+  {
+   "category": "World",
+   "detail": "levels/game/DingoLevel_Isle_Of_Grom/VFX_Global",
+   "key": "grom_vfx_global",
+   "label": "VFX Global",
+   "leaf": 161,
+   "map": "grom",
+   "switch": 161
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_FTUE_Island/Lighting_Global",
+   "key": "ftue_lighting_global",
+   "label": "Lighting Global",
+   "leaf": 162,
+   "map": "ftue",
+   "switch": 162
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_FTUE_Island/Lighting_Common_High",
+   "key": "ftue_lighting_common_high",
+   "label": "Lighting Common High",
+   "leaf": 163,
+   "map": "ftue",
+   "switch": 163
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_FTUE_Island/Lighting_Common_High_LRV",
+   "key": "ftue_lighting_common_high_lrv",
+   "label": "Lighting Common High LRV",
+   "leaf": 164,
+   "map": "ftue",
+   "switch": 164
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_FTUE_Island/Lighting_Common_Low",
+   "key": "ftue_lighting_common_low",
+   "label": "Lighting Common Low",
+   "leaf": 165,
+   "map": "ftue",
+   "switch": 165
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_FTUE_Island/Lighting_Common_Low_LRV",
+   "key": "ftue_lighting_common_low_lrv",
+   "label": "Lighting Common Low LRV",
+   "leaf": 166,
+   "map": "ftue",
+   "switch": 166
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_FTUE_Island/Lighting_Static",
+   "key": "ftue_lighting_static",
+   "label": "Lighting Static",
+   "leaf": 167,
+   "map": "ftue",
+   "switch": 167
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_FTUE_Island/Lighting_Static_High",
+   "key": "ftue_lighting_static_high",
+   "label": "Lighting Static High",
+   "leaf": 168,
+   "map": "ftue",
+   "switch": 168
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_FTUE_Island/Lighting_Static_Low",
+   "key": "ftue_lighting_static_low",
+   "label": "Lighting Static Low",
+   "leaf": 169,
+   "map": "ftue",
+   "switch": 169
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_FTUE_Island/Lighting_Static_Medium",
+   "key": "ftue_lighting_static_medium",
+   "label": "Lighting Static Medium",
+   "leaf": 170,
+   "map": "ftue",
+   "switch": 170
+  },
+  {
+   "category": "World",
+   "detail": "levels/game/DingoLevel_FTUE_Island/PostFTUE",
+   "key": "ftue_postftue",
+   "label": "PostFTUE",
+   "leaf": 171,
+   "map": "ftue",
+   "switch": 171
+  },
+  {
+   "category": "Structure",
+   "detail": "levels/game/DingoLevel_FTUE_Island/WP_DST_FTUE_ISLAND",
+   "key": "ftue_wp_dst_ftue_island",
+   "label": "WP DST FTUE ISLAND",
+   "leaf": 172,
+   "map": "ftue",
+   "switch": 172
+  },
+  {
+   "category": "Structure",
+   "detail": "levels/game/DingoLevel_FTUE_Island/TerrainSystem",
+   "key": "ftue_terrainsystem",
+   "label": "TerrainSystem",
+   "leaf": 173,
+   "map": "ftue",
+   "switch": 173
+  },
+  {
+   "category": "Structure",
+   "detail": "levels/game/DingoLevel_FTUE_Island/WP_Buildings",
+   "key": "ftue_wp_buildings",
+   "label": "WP Buildings",
+   "leaf": 174,
+   "map": "ftue",
+   "switch": 174
+  },
+  {
+   "category": "Structure",
+   "detail": "levels/game/DingoLevel_FTUE_Island/WP_LocalTools",
+   "key": "ftue_wp_localtools",
+   "label": "WP LocalTools",
+   "leaf": 175,
+   "map": "ftue",
+   "switch": 175
+  },
+  {
+   "category": "Structure",
+   "detail": "levels/game/DingoLevel_FTUE_Island/WP_Roads",
+   "key": "ftue_wp_roads",
+   "label": "WP Roads",
+   "leaf": 176,
+   "map": "ftue",
+   "switch": 176
+  },
+  {
+   "category": "Debug",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/_DEBUG_/DEV_Marketing",
+   "key": "stadium_1_dev_marketing",
+   "label": "DEV Marketing",
+   "leaf": 177,
+   "map": "stadium_1",
+   "switch": 177
+  },
+  {
+   "category": "Debug",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/MKTG_SPLASH_SH01",
+   "key": "stadium_1_mktg_splash_sh01",
+   "label": "MKTG SPLASH SH01",
+   "leaf": 178,
+   "map": "stadium_1",
+   "switch": 178
+  },
+  {
+   "category": "Debug",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/MKTG_TEMPLATE_SH00",
+   "key": "stadium_1_mktg_template_sh00",
+   "label": "MKTG TEMPLATE SH00",
+   "leaf": 179,
+   "map": "stadium_1",
+   "switch": 179
+  },
+  {
+   "category": "Debug",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/DEV_Screenshots",
+   "key": "stadium_1_dev_screenshots",
+   "label": "DEV Screenshots",
+   "leaf": 180,
+   "map": "stadium_1",
+   "switch": 180
+  },
+  {
+   "category": "Debug",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/DEV_MapScreenshots",
+   "key": "stadium_1_dev_mapscreenshots",
+   "label": "DEV MapScreenshots",
+   "leaf": 181,
+   "map": "stadium_1",
+   "switch": 181
+  },
+  {
+   "category": "Activities",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/GAMEPLAY_Activities",
+   "key": "stadium_1_gameplay_activities",
+   "label": "GAMEPLAY Activities",
+   "leaf": 182,
+   "map": "stadium_1",
+   "switch": 182
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/Lighting_Global",
+   "key": "stadium_1_lighting_global",
+   "label": "Lighting Global",
+   "leaf": 183,
+   "map": "stadium_1",
+   "switch": 183
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/Lighting_Common_High",
+   "key": "stadium_1_lighting_common_high",
+   "label": "Lighting Common High",
+   "leaf": 184,
+   "map": "stadium_1",
+   "switch": 184
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/Lighting_Common_High_LRV",
+   "key": "stadium_1_lighting_common_high_lrv",
+   "label": "Lighting Common High LRV",
+   "leaf": 185,
+   "map": "stadium_1",
+   "switch": 185
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/Lighting_Static",
+   "key": "stadium_1_lighting_static",
+   "label": "Lighting Static",
+   "leaf": 186,
+   "map": "stadium_1",
+   "switch": 186
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/Lighting_Static_High",
+   "key": "stadium_1_lighting_static_high",
+   "label": "Lighting Static High",
+   "leaf": 187,
+   "map": "stadium_1",
+   "switch": 187
+  },
+  {
+   "category": "Structure",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/TerrainSystem",
+   "key": "stadium_1_terrainsystem",
+   "label": "TerrainSystem",
+   "leaf": 188,
+   "map": "stadium_1",
+   "switch": 188
+  },
+  {
+   "category": "Structure",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/WorldRoot",
+   "key": "stadium_1_worldroot",
+   "label": "WorldRoot",
+   "leaf": 189,
+   "map": "stadium_1",
+   "switch": 189
+  },
+  {
+   "category": "Structure",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/WP_ProceduralOutput",
+   "key": "stadium_1_wp_proceduraloutput",
+   "label": "WP ProceduralOutput",
+   "leaf": 190,
+   "map": "stadium_1",
+   "switch": 190
+  },
+  {
+   "category": "Structure",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/WP_StadiumGeoContainer",
+   "key": "stadium_1_wp_stadiumgeocontainer",
+   "label": "WP StadiumGeoContainer",
+   "leaf": 191,
+   "map": "stadium_1",
+   "switch": 191
+  },
+  {
+   "category": "Structure",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/WP_Vista_Long",
+   "key": "stadium_1_wp_vista_long",
+   "label": "WP Vista Long",
+   "leaf": 192,
+   "map": "stadium_1",
+   "switch": 192
+  },
+  {
+   "category": "Structure",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/WP_Vista_Medium",
+   "key": "stadium_1_wp_vista_medium",
+   "label": "WP Vista Medium",
+   "leaf": 193,
+   "map": "stadium_1",
+   "switch": 193
+  },
+  {
+   "category": "Seasonal",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_001/Z_Stadium_EventPacks",
+   "key": "stadium_1_z_stadium_eventpacks",
+   "label": "Z Stadium EventPacks",
+   "leaf": 194,
+   "map": "stadium_1",
+   "switch": 194
+  },
+  {
+   "category": "Debug",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/DEV_Screenshots",
+   "key": "stadium_2_dev_screenshots",
+   "label": "DEV Screenshots",
+   "leaf": 195,
+   "map": "stadium_2",
+   "switch": 195
+  },
+  {
+   "category": "Debug",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/DEV_MapScreenshots",
+   "key": "stadium_2_dev_mapscreenshots",
+   "label": "DEV MapScreenshots",
+   "leaf": 196,
+   "map": "stadium_2",
+   "switch": 196
+  },
+  {
+   "category": "Activities",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/GAMEPLAY_Activities",
+   "key": "stadium_2_gameplay_activities",
+   "label": "GAMEPLAY Activities",
+   "leaf": 197,
+   "map": "stadium_2",
+   "switch": 197
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/Lighting_Global",
+   "key": "stadium_2_lighting_global",
+   "label": "Lighting Global",
+   "leaf": 198,
+   "map": "stadium_2",
+   "switch": 198
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/Lighting_Common_High",
+   "key": "stadium_2_lighting_common_high",
+   "label": "Lighting Common High",
+   "leaf": 199,
+   "map": "stadium_2",
+   "switch": 199
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/Lighting_Common_High_LRV",
+   "key": "stadium_2_lighting_common_high_lrv",
+   "label": "Lighting Common High LRV",
+   "leaf": 200,
+   "map": "stadium_2",
+   "switch": 200
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/Lighting_Static",
+   "key": "stadium_2_lighting_static",
+   "label": "Lighting Static",
+   "leaf": 201,
+   "map": "stadium_2",
+   "switch": 201
+  },
+  {
+   "category": "Lighting",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/Lighting_Static_High",
+   "key": "stadium_2_lighting_static_high",
+   "label": "Lighting Static High",
+   "leaf": 202,
+   "map": "stadium_2",
+   "switch": 202
+  },
+  {
+   "category": "Structure",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/WorldRoot",
+   "key": "stadium_2_worldroot",
+   "label": "WorldRoot",
+   "leaf": 203,
+   "map": "stadium_2",
+   "switch": 203
+  },
+  {
+   "category": "Structure",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/WP_ProceduralOutput",
+   "key": "stadium_2_wp_proceduraloutput",
+   "label": "WP ProceduralOutput",
+   "leaf": 204,
+   "map": "stadium_2",
+   "switch": 204
+  },
+  {
+   "category": "Structure",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/WP_StadiumGeoContainer",
+   "key": "stadium_2_wp_stadiumgeocontainer",
+   "label": "WP StadiumGeoContainer",
+   "leaf": 205,
+   "map": "stadium_2",
+   "switch": 205
+  },
+  {
+   "category": "World",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/ClientOnly",
+   "key": "stadium_2_clientonly",
+   "label": "ClientOnly",
+   "leaf": 206,
+   "map": "stadium_2",
+   "switch": 206
+  },
+  {
+   "category": "Structure",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/WP_Vista_Long",
+   "key": "stadium_2_wp_vista_long",
+   "label": "WP Vista Long",
+   "leaf": 207,
+   "map": "stadium_2",
+   "switch": 207
+  },
+  {
+   "category": "Structure",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/WP_Vista_Medium",
+   "key": "stadium_2_wp_vista_medium",
+   "label": "WP Vista Medium",
+   "leaf": 208,
+   "map": "stadium_2",
+   "switch": 208
+  },
+  {
+   "category": "Seasonal",
+   "detail": "levels/game/DingoLevel_SDM/DingoLevel_SDM_INT_002/Z_Stadium_EventPacks",
+   "key": "stadium_2_z_stadium_eventpacks",
+   "label": "Z Stadium EventPacks",
+   "leaf": 209,
+   "map": "stadium_2",
+   "switch": 209
+  },
+  {
+   "category": "Debug",
+   "detail": "Levels/Game/DingoLevel_MPR/_DEBUG_/DEV_Marketing",
+   "key": "mpr_dev_marketing",
+   "label": "DEV Marketing",
+   "leaf": 210,
+   "map": "mpr",
+   "switch": 210
+  },
+  {
+   "category": "Debug",
+   "detail": "Levels/Game/DingoLevel_MPR/_DEBUG_/MKTG_TEMPLATE_SH00",
+   "key": "mpr_mktg_template_sh00",
+   "label": "MKTG TEMPLATE SH00",
+   "leaf": 211,
+   "map": "mpr",
+   "switch": 211
+  },
+  {
+   "category": "Debug",
+   "detail": "Levels/Game/DingoLevel_MPR/MKTG_S5SPLASH_SH01",
+   "key": "mpr_mktg_s5splash_sh01",
+   "label": "MKTG S5SPLASH SH01",
+   "leaf": 212,
+   "map": "mpr",
+   "switch": 212
+  },
+  {
+   "category": "Activities",
+   "detail": "Levels/Game/DingoLevel_MPR/Activities",
+   "key": "mpr_activities",
+   "label": "Activities",
+   "leaf": 213,
+   "map": "mpr",
+   "switch": 213
+  },
+  {
+   "category": "Structure",
+   "detail": "Levels/Game/DingoLevel_MPR/BAM_Vista",
+   "key": "mpr_bam_vista",
+   "label": "BAM Vista",
+   "leaf": 214,
+   "map": "mpr",
+   "switch": 214
+  },
+  {
+   "category": "World",
+   "detail": "Levels/Game/DingoLevel_MPR/CitySystems",
+   "key": "mpr_citysystems",
+   "label": "CitySystems",
+   "leaf": 215,
+   "map": "mpr",
+   "switch": 215
+  },
+  {
+   "category": "Debug",
+   "detail": "Levels/Game/DingoLevel_MPR/DEV_Screenshots",
+   "key": "mpr_dev_screenshots",
+   "label": "DEV Screenshots",
+   "leaf": 216,
+   "map": "mpr",
+   "switch": 216
+  },
+  {
+   "category": "Debug",
+   "detail": "Levels/Game/DingoLevel_MPR/DEV_MapScreenshots",
+   "key": "mpr_dev_mapscreenshots",
+   "label": "DEV MapScreenshots",
+   "leaf": 217,
+   "map": "mpr",
+   "switch": 217
+  },
+  {
+   "category": "Structure",
+   "detail": "Levels/Game/DingoLevel_MPR/DingoLevel_MPR/WPRootQuadrant",
+   "key": "mpr_wprootquadrant",
+   "label": "WPRootQuadrant",
+   "leaf": 218,
+   "map": "mpr",
+   "switch": 218
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/Lighting_Global",
+   "key": "mpr_lighting_global",
+   "label": "Lighting Global",
+   "leaf": 219,
+   "map": "mpr",
+   "switch": 219
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/Lighting_Common_High",
+   "key": "mpr_lighting_common_high",
+   "label": "Lighting Common High",
+   "leaf": 220,
+   "map": "mpr",
+   "switch": 220
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/Lighting_Common_High_LRV",
+   "key": "mpr_lighting_common_high_lrv",
+   "label": "Lighting Common High LRV",
+   "leaf": 221,
+   "map": "mpr",
+   "switch": 221
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/Lighting_Common_Low",
+   "key": "mpr_lighting_common_low",
+   "label": "Lighting Common Low",
+   "leaf": 222,
+   "map": "mpr",
+   "switch": 222
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/Lighting_Common_Low_LRV",
+   "key": "mpr_lighting_common_low_lrv",
+   "label": "Lighting Common Low LRV",
+   "leaf": 223,
+   "map": "mpr",
+   "switch": 223
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/Lighting_Common_Med",
+   "key": "mpr_lighting_common_med",
+   "label": "Lighting Common Med",
+   "leaf": 224,
+   "map": "mpr",
+   "switch": 224
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/Lighting_Static",
+   "key": "mpr_lighting_static",
+   "label": "Lighting Static",
+   "leaf": 225,
+   "map": "mpr",
+   "switch": 225
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/Lighting_Static_High",
+   "key": "mpr_lighting_static_high",
+   "label": "Lighting Static High",
+   "leaf": 226,
+   "map": "mpr",
+   "switch": 226
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/High_TOD_1_Morning",
+   "key": "mpr_high_tod_1_morning",
+   "label": "High TOD 1 Morning",
+   "leaf": 227,
+   "map": "mpr",
+   "switch": 227
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/High_TOD_2_Noon",
+   "key": "mpr_high_tod_2_noon",
+   "label": "High TOD 2 Noon",
+   "leaf": 228,
+   "map": "mpr",
+   "switch": 228
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/High_TOD_3_Afternoon",
+   "key": "mpr_high_tod_3_afternoon",
+   "label": "High TOD 3 Afternoon",
+   "leaf": 229,
+   "map": "mpr",
+   "switch": 229
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/High_TOD_4_Evening",
+   "key": "mpr_high_tod_4_evening",
+   "label": "High TOD 4 Evening",
+   "leaf": 230,
+   "map": "mpr",
+   "switch": 230
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/High_TOD_5_Night",
+   "key": "mpr_high_tod_5_night",
+   "label": "High TOD 5 Night",
+   "leaf": 231,
+   "map": "mpr",
+   "switch": 231
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/High_TOD_6_WeatherDay",
+   "key": "mpr_high_tod_6_weatherday",
+   "label": "High TOD 6 WeatherDay",
+   "leaf": 232,
+   "map": "mpr",
+   "switch": 232
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/High_TOD_7_WeatherNight",
+   "key": "mpr_high_tod_7_weathernight",
+   "label": "High TOD 7 WeatherNight",
+   "leaf": 233,
+   "map": "mpr",
+   "switch": 233
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/Lighting_Static_Low",
+   "key": "mpr_lighting_static_low",
+   "label": "Lighting Static Low",
+   "leaf": 234,
+   "map": "mpr",
+   "switch": 234
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/Low_TOD_1_Morning",
+   "key": "mpr_low_tod_1_morning",
+   "label": "Low TOD 1 Morning",
+   "leaf": 235,
+   "map": "mpr",
+   "switch": 235
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/Low_TOD_2_Noon",
+   "key": "mpr_low_tod_2_noon",
+   "label": "Low TOD 2 Noon",
+   "leaf": 236,
+   "map": "mpr",
+   "switch": 236
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/Low_TOD_3_Afternoon",
+   "key": "mpr_low_tod_3_afternoon",
+   "label": "Low TOD 3 Afternoon",
+   "leaf": 237,
+   "map": "mpr",
+   "switch": 237
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/Low_TOD_4_Evening",
+   "key": "mpr_low_tod_4_evening",
+   "label": "Low TOD 4 Evening",
+   "leaf": 238,
+   "map": "mpr",
+   "switch": 238
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/Low_TOD_5_Night",
+   "key": "mpr_low_tod_5_night",
+   "label": "Low TOD 5 Night",
+   "leaf": 239,
+   "map": "mpr",
+   "switch": 239
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/Low_TOD_6_WeatherDay",
+   "key": "mpr_low_tod_6_weatherday",
+   "label": "Low TOD 6 WeatherDay",
+   "leaf": 240,
+   "map": "mpr",
+   "switch": 240
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/Low_TOD_7_WeatherNight",
+   "key": "mpr_low_tod_7_weathernight",
+   "label": "Low TOD 7 WeatherNight",
+   "leaf": 241,
+   "map": "mpr",
+   "switch": 241
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/Lighting_Static_Medium",
+   "key": "mpr_lighting_static_medium",
+   "label": "Lighting Static Medium",
+   "leaf": 242,
+   "map": "mpr",
+   "switch": 242
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/Medium_TOD_1_Morning",
+   "key": "mpr_medium_tod_1_morning",
+   "label": "Medium TOD 1 Morning",
+   "leaf": 243,
+   "map": "mpr",
+   "switch": 243
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/Medium_TOD_2_Noon",
+   "key": "mpr_medium_tod_2_noon",
+   "label": "Medium TOD 2 Noon",
+   "leaf": 244,
+   "map": "mpr",
+   "switch": 244
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/Medium_TOD_3_Afternoon",
+   "key": "mpr_medium_tod_3_afternoon",
+   "label": "Medium TOD 3 Afternoon",
+   "leaf": 245,
+   "map": "mpr",
+   "switch": 245
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/Medium_TOD_4_Evening",
+   "key": "mpr_medium_tod_4_evening",
+   "label": "Medium TOD 4 Evening",
+   "leaf": 246,
+   "map": "mpr",
+   "switch": 246
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/Medium_TOD_5_Night",
+   "key": "mpr_medium_tod_5_night",
+   "label": "Medium TOD 5 Night",
+   "leaf": 247,
+   "map": "mpr",
+   "switch": 247
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/Medium_TOD_6_WeatherDay",
+   "key": "mpr_medium_tod_6_weatherday",
+   "label": "Medium TOD 6 WeatherDay",
+   "leaf": 248,
+   "map": "mpr",
+   "switch": 248
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/Medium_TOD_7_WeatherNight",
+   "key": "mpr_medium_tod_7_weathernight",
+   "label": "Medium TOD 7 WeatherNight",
+   "leaf": 249,
+   "map": "mpr",
+   "switch": 249
+  },
+  {
+   "category": "World",
+   "detail": "Levels/Game/DingoLevel_MPR/StartPoint_Sublevels",
+   "key": "mpr_startpoint_sublevels",
+   "label": "StartPoint Sublevels",
+   "leaf": 250,
+   "map": "mpr",
+   "switch": 250
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/TOD_1_Morning",
+   "key": "mpr_tod_1_morning",
+   "label": "TOD 1 Morning",
+   "leaf": 251,
+   "map": "mpr",
+   "switch": 251
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/TOD_2_Noon",
+   "key": "mpr_tod_2_noon",
+   "label": "TOD 2 Noon",
+   "leaf": 252,
+   "map": "mpr",
+   "switch": 252
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/TOD_3_Afternoon",
+   "key": "mpr_tod_3_afternoon",
+   "label": "TOD 3 Afternoon",
+   "leaf": 253,
+   "map": "mpr",
+   "switch": 253
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/TOD_4_Evening",
+   "key": "mpr_tod_4_evening",
+   "label": "TOD 4 Evening",
+   "leaf": 254,
+   "map": "mpr",
+   "switch": 254
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/TOD_5_Night",
+   "key": "mpr_tod_5_night",
+   "label": "TOD 5 Night",
+   "leaf": 255,
+   "map": "mpr",
+   "switch": 255
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/TOD_6_WeatherDay",
+   "key": "mpr_tod_6_weatherday",
+   "label": "TOD 6 WeatherDay",
+   "leaf": 256,
+   "map": "mpr",
+   "switch": 256
+  },
+  {
+   "category": "Lighting",
+   "detail": "Levels/Game/DingoLevel_MPR/TOD_7_WeatherNight",
+   "key": "mpr_tod_7_weathernight",
+   "label": "TOD 7 WeatherNight",
+   "leaf": 257,
+   "map": "mpr",
+   "switch": 257
+  },
+  {
+   "category": "Debug",
+   "detail": "Levels/Game/DingoLevel_MPR/TechArt_Global",
+   "key": "mpr_techart_global",
+   "label": "TechArt Global",
+   "leaf": 258,
+   "map": "mpr",
+   "switch": 258
+  },
+  {
+   "category": "Debug",
+   "detail": "Levels/Game/DingoLevel_MPR/TechArt_WPS",
+   "key": "mpr_techart_wps",
+   "label": "TechArt WPS",
+   "leaf": 259,
+   "map": "mpr",
+   "switch": 259
+  },
+  {
+   "category": "Structure",
+   "detail": "Levels/Game/DingoLevel_MPR/TerrainSystem",
+   "key": "mpr_terrainsystem",
+   "label": "TerrainSystem",
+   "leaf": 260,
+   "map": "mpr",
+   "switch": 260
+  },
+  {
+   "category": "World",
+   "detail": "Levels/Game/DingoLevel_MPR/VFX_Global",
+   "key": "mpr_vfx_global",
+   "label": "VFX Global",
+   "leaf": 261,
+   "map": "mpr",
+   "switch": 261
+  }
+ ],
+ "stamp": "server"
+}

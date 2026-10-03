@@ -1,0 +1,415 @@
+// Checks of the protocol, codecs and session rules against the C++ server's behaviour.
+use crate::config::{config_error, load_config, load_levels, map_destination, map_label, map_setting, save_config, ServerConfig};
+use crate::objects::{ObjectResult, ObjectState};
+use crate::party::{PartyBook, PartyResult};
+use crate::protocol::*;
+use crate::speed::SpeedCheck;
+use crate::wire::{decode_wire, encode_wire, encode_wire_bytes, DeltaReceiver, DeltaSender};
+use crate::words::{contains_bad_words, mask_bad_words};
+
+const PLAYER: u64 = 76561198000000001;
+const OTHER: u64 = 76561198000000002;
+const THIRD: u64 = 76561198000000003;
+const SERVER: u64 = (1 << 56) | (4 << 52) | 12345;
+
+fn base(kind: u16) -> Packet {
+    Packet { kind, sequence: 7, session: 0x1234_5678_9abc_def0, map: 42, epoch: 99, time_us: 1_000_000, source: PLAYER, ..Default::default() }
+}
+
+fn pose_packet(sequence: u32, time: u64, x: f32) -> Packet {
+    let mut p = base(kind::POSE);
+    p.sequence = sequence;
+    p.time_us = time;
+    p.pose.root.position = [x, 1.0, -3.5];
+    for i in 0..40 {
+        let mut t = Transform::default();
+        t.position = [i as f32 * 0.01 + x * 0.001, 0.5, -0.25];
+        let angle = i as f32 * 0.1;
+        t.rotation = [0.0, (angle / 2.0).sin(), 0.0, (angle / 2.0).cos()];
+        p.pose.skater.push(t);
+    }
+    p.pose.board.push(Transform { position: [x, 0.1, -3.5], ..Default::default() });
+    p.pose.board.push(Transform::default());
+    p.pose.board.push(Transform { position: [x + 100.0, 0.1, 0.0], scale: [1.5, 1.5, 1.5], ..Default::default() });
+    p
+}
+
+#[test]
+fn header_layout_matches_the_game() {
+    let raw = encode(&base(kind::AWAY), false);
+    assert_eq!(raw.len(), PACKET_HEADER_SIZE);
+    assert_eq!(&raw[..4], b"RMP1");
+    assert_eq!(u16::from_le_bytes([raw[4], raw[5]]), 38);
+    assert_eq!(u16::from_le_bytes([raw[6], raw[7]]), kind::AWAY);
+    assert_eq!(u32::from_le_bytes(raw[8..12].try_into().unwrap()), 0);
+    let p = decode(&raw).unwrap();
+    assert_eq!((p.kind, p.session, p.map, p.epoch, p.source, p.world), (kind::AWAY, 0x1234_5678_9abc_def0, 42, 99, PLAYER, 1));
+}
+
+#[test]
+fn chat_admin_scoring_party_teleport_round_trip() {
+    let mut chat = base(kind::CHAT);
+    chat.text = "hallo Welt ✓".into();
+    assert_eq!(decode(&encode(&chat, false)).unwrap().text, chat.text);
+
+    let mut admin = base(kind::ADMIN);
+    admin.text = "map grom".into();
+    assert_eq!(decode(&encode(&admin, false)).unwrap().text, "map grom");
+
+    let mut scoring = base(kind::SCORING);
+    scoring.scoring = 0xdead_beef;
+    scoring.text = "BigAirMod".into();
+    let back = decode(&encode(&scoring, false)).unwrap();
+    assert_eq!((back.scoring, back.text.as_str()), (0xdead_beef, "BigAirMod"));
+
+    let mut party = base(kind::PARTY);
+    party.party_action = party_action::INVITE;
+    party.party_player = OTHER;
+    let back = decode(&encode(&party, false)).unwrap();
+    assert_eq!((back.party_action, back.party_player), (party_action::INVITE, OTHER));
+
+    let mut teleport = base(kind::TELEPORT);
+    teleport.teleport = [1.5, -2.0, 300.25];
+    assert_eq!(decode(&encode(&teleport, false)).unwrap().teleport, [1.5, -2.0, 300.25]);
+
+    // Invalid text is refused both ways.
+    chat.text = "bad\u{7}".into();
+    assert!(std::panic::catch_unwind(|| encode(&chat, false)).is_err());
+}
+
+#[test]
+fn greetings_and_world_messages_round_trip() {
+    let mut hello = base(kind::HELLO);
+    hello.build = game_sha256_bytes();
+    hello.challenge = 5;
+    hello.proof = [7; 32];
+    hello.text = "Zee".into();
+    let back = decode(&encode(&hello, false)).unwrap();
+    assert_eq!((back.build, back.challenge, back.proof, back.text.as_str()), (game_sha256_bytes(), 5, [7; 32], "Zee"));
+    assert_eq!(encode(&hello, false).len(), PACKET_HEADER_SIZE + 72 + 1 + 3);
+
+    let destination = "Levels/Game/DingoLevel_Root/DingoLevel_Root|Levels/Game/BAM_LevelRoot/BAM_LevelRoot";
+    let mut offer = base(kind::MAP_OFFER);
+    offer.map = map_hash(destination);
+    offer.destination = destination.into();
+    offer.map_authorized = true;
+    let back = decode(&encode(&offer, false)).unwrap();
+    assert!(back.map_authorized);
+    assert_eq!(back.destination, destination);
+
+    let mut state = base(kind::WORLD_STATE);
+    state.map = map_hash(destination);
+    state.destination = destination.into();
+    state.world_ready = true;
+    state.world = 3;
+    let back = decode(&encode(&state, false)).unwrap();
+    assert_eq!((back.world, back.world_ready, back.destination.as_str()), (3, true, destination));
+
+    let mut ready = base(kind::WORLD_READY);
+    ready.world_ready = true;
+    assert!(decode(&encode(&ready, false)).unwrap().world_ready);
+
+    let mut request = base(kind::MAP_REQUEST);
+    request.world = 0; // a map request may name no world yet
+    assert!(decode(&encode(&request, false)).is_some());
+}
+
+#[test]
+fn roster_round_trip_and_rules() {
+    let mut roster = base(kind::ROSTER);
+    roster.source = SERVER;
+    roster.capacity = 17;
+    roster.members.push(Member { id: SERVER, epoch: 5, name: "My server".into(), ..Default::default() });
+    roster.members.push(Member { id: PLAYER, epoch: 6, name: "Zee".into(), admin: true, party: 3, party_leader: true, party_open: true, ..Default::default() });
+    roster.members.push(Member { id: OTHER, epoch: 7, name: "Kai".into(), party: 3, speeding: true, scoring: true, ..Default::default() });
+    roster.parks = ["skatepark_01".into(), "empty".into(), "streetpark_06".into()];
+    roster.server_votes = SERVER_VOTE_MAP | SERVER_VOTE_TIME;
+    roster.guest_boosts = false;
+    roster.tps = 60;
+    roster.voice_range = 250.0;
+    let back = decode(&encode(&roster, false)).unwrap();
+    assert_eq!(back.members, roster.members);
+    assert_eq!(back.parks, roster.parks);
+    assert_eq!((back.capacity, back.tps, back.server_votes, back.guest_boosts, back.voice_range), (17, 60, 5, false, 250.0));
+
+    // A party needs one leader and two members; a server is in no party.
+    let mut lonely = roster.clone();
+    lonely.members.truncate(2);
+    assert!(std::panic::catch_unwind(|| encode(&lonely, false)).is_err());
+    assert!(game_server_steam_id(SERVER) && !individual_steam_id(SERVER));
+    assert!(individual_steam_id(PLAYER));
+}
+
+#[test]
+fn bans_maps_objects_round_trip() {
+    let mut bans = base(kind::BANS);
+    bans.ban_total = 3;
+    bans.bans.push(Ban { id: PLAYER, name: "Griefer".into(), added: 1_700_000_000 });
+    let back = decode(&encode(&bans, false)).unwrap();
+    assert_eq!((back.ban_total, back.bans[0].id, back.bans[0].name.as_str(), back.bans[0].added), (3, PLAYER, "Griefer", 1_700_000_000));
+
+    let mut maps = base(kind::MAPS);
+    maps.maps = vec!["Levels/Game/BAM_LevelRoot/BAM_LevelRoot".into(), "Levels/Custom/bbcity".into()];
+    assert_eq!(decode(&encode(&maps, false)).unwrap().maps, maps.maps);
+
+    let mut objects = base(kind::OBJECTS);
+    objects.objects = ObjectChunk {
+        base: 0,
+        revision: 2,
+        part: 0,
+        parts: 1,
+        objects: vec![NetworkObject { id: 9, item: "own_bk_rail_01".into(), position: [1.0, 2.0, 3.0], ..Default::default() }],
+        removed: vec![],
+    };
+    let back = decode(&encode(&objects, false)).unwrap();
+    assert_eq!(back.objects.objects, objects.objects.objects);
+}
+
+#[test]
+fn compact_poses_keep_their_shape() {
+    let p = pose_packet(1, 2_000_000, 10.0);
+    let raw = encode(&p, true);
+    assert_eq!(u16::from_le_bytes([raw[6], raw[7]]), 8); // packed pose
+    let back = decode(&raw).unwrap();
+    assert_eq!(back.kind, kind::POSE);
+    assert_eq!(back.pose.skater.len(), 40);
+    assert_eq!(back.pose.board.len(), 3);
+    for (a, b) in back.pose.skater.iter().zip(&p.pose.skater) {
+        for i in 0..3 {
+            assert!((a.position[i] - b.position[i]).abs() < 0.001);
+        }
+        for i in 0..4 {
+            assert!((a.rotation[i] - b.rotation[i]).abs() < 0.0002);
+        }
+    }
+    // Wide positions and scales are kept exactly.
+    assert_eq!(back.pose.board[2].position[0], 110.0);
+    assert_eq!(back.pose.board[2].scale, [1.5; 3]);
+    // Full-width poses decode too.
+    let full = encode(&p, false);
+    assert_eq!(full.len(), PACKET_HEADER_SIZE + 46 + 43 * 40);
+    assert_eq!(decode(&full).unwrap().pose.skater[3], p.pose.skater[3]);
+}
+
+#[test]
+fn wire_compression_round_trips() {
+    let p = pose_packet(1, 2_000_000, 1.0);
+    let raw = encode(&p, true);
+    let wire = encode_wire_bytes(&raw);
+    assert!(raw.len() >= 256);
+    assert!(wire.starts_with(b"RMC1"));
+    assert!(wire.len() < raw.len());
+    assert_eq!(crate::wire::decode_wire_bytes(&wire).unwrap(), raw);
+    let small = encode_wire(&base(kind::AWAY));
+    assert!(small.starts_with(b"RMP1"));
+    assert_eq!(decode_wire(&small).unwrap().kind, kind::AWAY);
+}
+
+#[test]
+fn deltas_reach_the_receiver_exactly() {
+    let mut sender = DeltaSender::default();
+    let mut receiver = DeltaReceiver::default();
+    let mut missing = false;
+    // The first pose is a full snapshot that becomes the reference.
+    let first = pose_packet(1, 2_000_000, 1.0);
+    let update = sender.prepare(&first);
+    assert!(update.establishes_baseline());
+    assert!(update.bytes.starts_with(b"RMB1"));
+    let got = receiver.receive(&update.bytes, &mut missing, 1).unwrap();
+    assert_eq!(encode(&got, true), encode(&first, true));
+    sender.sent(&first, update);
+    // Later poses are sparse patches against it.
+    for step in 1..10u32 {
+        let next = pose_packet(1 + step, 2_000_000 + u64::from(step) * 33_333, 1.0 + step as f32 * 0.05);
+        let update = sender.prepare(&next);
+        assert!(!update.establishes_baseline());
+        assert!(update.bytes.starts_with(b"RMS1"), "step {step}");
+        let got = receiver.receive(&update.bytes, &mut missing, 1).unwrap();
+        assert!(!missing);
+        assert_eq!(encode(&got, true), encode(&next, true));
+        sender.sent(&next, update);
+    }
+    // A receiver without the reference reports a missing frame, not an error.
+    let mut fresh = DeltaReceiver::default();
+    let next = pose_packet(20, 2_500_000, 2.0);
+    let update = sender.prepare(&next);
+    assert!(fresh.receive(&update.bytes, &mut missing, 1).is_none());
+    assert!(missing);
+}
+
+#[test]
+fn cosmetics_and_audio_use_xor_deltas() {
+    let mut p = base(kind::COSMETICS);
+    let recipe = |key: u32, version: u32| CosmeticRecipe {
+        key,
+        version,
+        scalars: vec![1, 2, 3],
+        items: (1..=12)
+            .map(|slot| CosmeticSlot { slot, asset: format!("Own_TopShirt_Gen_TshirtRelaxed_{slot:05}").into_bytes(), parameters: vec![slot; 6] })
+            .collect(),
+    };
+    p.appearance = Appearance { skater: recipe(SKATER_RECIPE_KEY, 2), board: recipe(BOARD_RECIPE_KEY, 1), card: PlayerCard { background: 1, emblem: 2, title: 3 } };
+    let mut sender = DeltaSender::default();
+    let mut receiver = DeltaReceiver::default();
+    let mut missing = false;
+    let first = sender.prepare(&p);
+    assert_eq!(receiver.receive(&first.bytes, &mut missing, 1).unwrap().appearance, p.appearance);
+    sender.sent(&p, first);
+    p.sequence += 1;
+    p.time_us += 10_000_000; // cosmetics references never expire
+    p.appearance.card.title = 9;
+    let second = sender.prepare(&p);
+    assert!(second.bytes.starts_with(b"RMD1"));
+    assert_eq!(receiver.receive(&second.bytes, &mut missing, 1).unwrap().appearance, p.appearance);
+
+    let mut audio = base(kind::AUDIO);
+    for age in [30_000u32, 20_000, 0] {
+        let mut s = AudioSample { age_us: age, ..Default::default() };
+        s.state.values[3] = age as f32;
+        s.state.selectors[2] = 4;
+        s.state.flags[5] = 1;
+        s.event = age == 0;
+        audio.audio.push(s);
+    }
+    let back = decode(&encode(&audio, true)).unwrap();
+    assert_eq!(back.audio.len(), 3);
+    assert_eq!(back.audio[1].state, audio.audio[1].state);
+    assert!(back.audio[2].event);
+}
+
+#[test]
+fn chat_text_rules() {
+    assert_eq!(clean_chat_text("  hi\tthere\n "), "hi there");
+    assert_eq!(clean_chat_text(&"ä".repeat(150)).len(), 200);
+    assert!(valid_chat_text("ok".as_bytes()));
+    assert!(!valid_chat_text("   ".as_bytes()));
+    assert!(!valid_chat_text(&[0xC2, 0x85]));
+    assert!(!valid_member_name(&[0xff]));
+    assert_eq!(format_invite(PLAYER, 0xabc), "76561198000000001-0000000000000abc");
+    assert!(newer_sequence(1, u32::MAX));
+    assert!(!newer_sequence(5, 5));
+    assert_eq!(map_hash("Levels\\Game"), map_hash("levels/game"));
+}
+
+#[test]
+fn bad_words() {
+    assert!(contains_bad_words("fuck"));
+    assert!(contains_bad_words("Sh1t"));
+    assert!(contains_bad_words("f u c k"));
+    assert!(contains_bad_words("fuckface"));
+    assert!(!contains_bad_words("Scunthorpe"));
+    assert!(!contains_bad_words("cocktail party"));
+    assert!(!contains_bad_words("hello world"));
+    assert!(!contains_bad_words("ReSkate server"));
+    assert_eq!(mask_bad_words("hey shit!"), "hey ****!");
+}
+
+#[test]
+fn parties() {
+    let mut book = PartyBook::new(8);
+    assert_eq!(book.invite(PLAYER, OTHER, 0), PartyResult::Ok);
+    assert_eq!(book.invite(PLAYER, OTHER, 0), PartyResult::Renewed);
+    assert_eq!(book.accept(OTHER, PLAYER, 1), PartyResult::Ok);
+    let party = book.party_of(PLAYER);
+    assert!(party != 0 && party == book.party_of(OTHER));
+    assert_eq!(book.party(party).unwrap().leader, PLAYER);
+    assert_eq!(book.join(THIRD, PLAYER, 2), PartyResult::Closed);
+    assert_eq!(book.set_open(PLAYER, true), PartyResult::Ok);
+    assert_eq!(book.join(THIRD, PLAYER, 2), PartyResult::Ok);
+    assert_eq!(book.promote(PLAYER, THIRD), PartyResult::Ok);
+    assert_eq!(book.kick(PLAYER, OTHER), PartyResult::NotLeader);
+    book.remove(THIRD); // the leader leaves the server: the longest-standing member leads
+    assert_eq!(book.party(party).unwrap().leader, PLAYER);
+    assert_eq!(book.leave(OTHER), PartyResult::Ok); // one left alone: dissolved
+    assert_eq!(book.party_of(PLAYER), 0);
+    assert_eq!(book.invite(PLAYER, OTHER, 0), PartyResult::Ok);
+    assert_eq!(book.expire(crate::party::INVITE_LIFETIME_US).len(), 1);
+}
+
+#[test]
+fn speed_check_flags_a_fast_clock_only() {
+    let mut normal = SpeedCheck::default();
+    let mut fast = SpeedCheck::default();
+    let mut flagged = false;
+    for i in 0..2000u64 {
+        let arrived = 10_000_000 + i * 33_333;
+        normal.sample(5_000_000 + i * 33_333 + (i % 7) * 900, arrived);
+        if fast.sample(5_000_000 + (i as f64 * 33_333.0 * 1.3) as u64, arrived) && fast.flagged() {
+            flagged = true;
+        }
+    }
+    assert!(!normal.flagged());
+    assert!((normal.speed() - 1.0).abs() < 0.01);
+    assert!(flagged);
+    assert!(fast.speed() > 1.25);
+}
+
+#[test]
+fn object_states_apply_whole_revisions() {
+    let objects: Vec<NetworkObject> = (1..=70)
+        .map(|id| NetworkObject { id, item: format!("own_bk_box_{id}"), position: [id as f32, 0.0, 0.0], ..Default::default() })
+        .collect();
+    let mut owner = ObjectState::default();
+    owner.replace(&objects);
+    let chunks = owner.updates(0);
+    assert_eq!(chunks.len(), 2);
+    let mut copy = ObjectState::default();
+    assert!(copy.receive(&chunks[0]) == ObjectResult::Pending);
+    assert!(copy.receive(&chunks[1]) == ObjectResult::Applied);
+    assert_eq!(copy.layout(), objects);
+    owner.replace(&objects[..69]);
+    let delta = owner.updates(copy.revision());
+    assert_eq!(delta.len(), 1);
+    assert_eq!(delta[0].removed, vec![70]);
+    assert!(copy.receive(&delta[0]) == ObjectResult::Applied);
+    assert_eq!(copy.layout().len(), 69);
+}
+
+#[test]
+fn password_proofs_depend_on_every_input() {
+    let key = crate::password::password_key("hunter2", 77).unwrap();
+    let proof = crate::password::password_proof(&key, 77, 1, 2, 3, 4, 5, 6);
+    assert!(crate::password::proof_matches(&proof, &crate::password::password_proof(&key, 77, 1, 2, 3, 4, 5, 6)));
+    assert!(!crate::password::proof_matches(&proof, &crate::password::password_proof(&key, 77, 1, 2, 3, 4, 5, 7)));
+    assert_ne!(key, crate::password::password_key("hunter2", 78).unwrap());
+}
+
+#[test]
+fn config_file_round_trip_and_maps() {
+    let folder = std::env::temp_dir().join(format!("reskate-test-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&folder);
+    let mods = folder.join("Mods").join("bbcity");
+    std::fs::create_dir_all(&mods).unwrap();
+    std::fs::write(mods.join("reskate-levels.json"), r#"{"levels":[{"asset":"Levels/Custom/BBCity/BBCity","displayName":"bbcity"}]}"#).unwrap();
+    assert!(load_levels(&folder.join("Mods")).is_empty());
+    assert_eq!(map_setting("isle"), "Isle of Grom"); // the start of a name, as in the C++ server
+    assert_eq!(map_label("San Vansterdam"), "San Vansterdam");
+    assert_eq!(map_setting("bbcity"), "bbcity");
+    assert_eq!(map_destination("bbcity"), "Levels/Game/DingoLevel_Root/DingoLevel_Root|Levels/Custom/BBCity/BBCity");
+    assert_eq!(map_setting("Levels/Game/DingoLevel_Root/DingoLevel_Root|Levels/Game/DingoLevel_MPR/DingoLevel_MPR"), "Super Ultra Mega Resort");
+    assert_eq!(map_setting("Stadium"), "Stadium"); // ambiguous start: kept as typed
+
+    let file = folder.join("ReSkateServer.json");
+    let mut added = Vec::new();
+    let mut config = load_config(&file, &mut added).unwrap();
+    assert!(file.exists());
+    assert_eq!(config_error(&config), "");
+    config.name = "Linux test".into();
+    config.admins.push(PLAYER);
+    config.votes.map.enabled = true;
+    save_config(&config).unwrap();
+    let text = std::fs::read_to_string(&file).unwrap();
+    assert!(text.contains("\"76561198000000001\""));
+    // An older file without newer settings gets them written back.
+    let mut value: serde_json::Value = serde_json::from_str(&text).unwrap();
+    value.as_object_mut().unwrap().remove("party_size");
+    std::fs::write(&file, value.to_string()).unwrap();
+    let back = load_config(&file, &mut added).unwrap();
+    assert_eq!(added, vec!["party_size".to_string()]);
+    assert_eq!(back.name, "Linux test");
+    assert_eq!(back.admins, vec![PLAYER]);
+    assert!(back.votes.map.enabled);
+    let bad = ServerConfig { port: 5, query_port: 5, ..back.clone() };
+    assert_eq!(config_error(&bad), "port and query_port must differ.");
+    let _ = std::fs::remove_dir_all(&folder);
+}
