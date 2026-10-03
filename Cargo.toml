@@ -1,6 +1,6 @@
 [package]
 name = "reskate-server"
-version = "1.0.4"
+version = "1.0.5"
 edition = "2021"
 description = "ReSkate dedicated server, ported to Rust for Linux"
 license = "GPL-3.0-only"
