@@ -1319,7 +1319,7 @@ impl Host {
         for id in ids {
             if !links.iter().any(|l| l.id == id) {
                 let reason = match self.transport.take_end_reason(id) {
-                    Some(why) => format!("Disconnected: {why}."),
+                    Some(why) => format!("Disconnected: {}.", why.trim_end_matches('.')),
                     None => "Disconnected.".to_string(),
                 };
                 self.drop_guest(id, &reason);

@@ -771,6 +771,8 @@ fn discord_lines_reach_the_webhook_in_batches() {
     assert!(embeds[0]["timestamp"].as_str().unwrap().ends_with('Z'));
     assert_eq!(embeds[1]["title"], "🔴 Player left");
     assert_eq!(embeds[2]["title"], "⛔ Server stopped");
+    // SUPPRESS_EMBEDS (flags 4) would hide every embed: the messages arrived empty.
+    assert!(body.get("flags").is_none(), "{body}");
     assert!(!body.to_string().contains("everyone"));
 }
 

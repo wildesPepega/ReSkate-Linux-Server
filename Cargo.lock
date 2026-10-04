@@ -546,7 +546,7 @@ dependencies = [
 
 [[package]]
 name = "reskate-server"
-version = "1.0.8-4"
+version = "1.0.8-5"
 dependencies = [
  "flate2",
  "hmac",
