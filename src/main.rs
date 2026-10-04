@@ -364,7 +364,7 @@ fn run() -> i32 {
         ));
     }
     if !config.discord_webhook.is_empty() {
-        match discord::start(&config.discord_webhook, &config.discord_events, &config.name, write_log) {
+        match discord::start(&config.discord_webhook, &config.discord_events, &config.discord_style, &config.name, write_log) {
             Ok(summary) => write_log(&summary),
             Err(e) => write_log(&format!("Discord is off: {e}.")),
         }

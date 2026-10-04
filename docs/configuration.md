@@ -15,6 +15,7 @@ the console or by an admin in game is saved back to this file.
   "boosts": true,
   "discord": {
     "events": ["start", "stop", "update", "join", "leave", "throwdown", "vote", "anticheat", "admin"],
+    "style": "embed",
     "webhook": ""
   },
   "distances": {
@@ -152,7 +153,8 @@ Integrations → Webhooks → New Webhook → Copy Webhook URL).
 ```json
 "discord": {
   "webhook": "https://discord.com/api/webhooks/123456789/abcdef...",
-  "events": ["start", "stop", "update", "join", "leave", "throwdown", "vote", "anticheat", "admin"]
+  "events": ["start", "stop", "update", "join", "leave", "throwdown", "vote", "anticheat", "admin"],
+  "style": "embed"
 }
 ```
 
@@ -160,6 +162,7 @@ Integrations → Webhooks → New Webhook → Copy Webhook URL).
 |---|---|
 | `webhook` | The webhook URL; empty turns Discord off. Read at startup: restart after changing it. Keep it secret, anyone with it can post to the channel. |
 | `events` | What to send, from the list below, or `["all"]`. |
+| `style` | `"embed"` (default): one embed per event, with a title, a colour per event, the server's name and the time, shown in each reader's own time zone. `"text"`: one compact line per event, handy for a busy chat feed. |
 
 | Event | Console lines |
 |---|---|
@@ -180,9 +183,23 @@ Integrations → Webhooks → New Webhook → Copy Webhook URL).
 | `plugins` | plugin messages and errors |
 | `server` | everything else (console answers, startup details, errors) |
 
-Lines are collected for about a second and sent together, so busy servers stay under Discord's rate
-limit. Each line gets an emoji for its event and the time. The webhook posts under the server's
-name. Mentions in player text (`@everyone`, user pings) and link previews are suppressed.
+Events are collected for about a second and sent together (up to 10 embeds per message), so busy
+servers stay under Discord's rate limit. The webhook posts under the server's name. Mentions in
+player text (`@everyone`, user pings) and link previews are suppressed.
+
+| Event | Embed colour |
+|---|---|
+| `start`, `join` | green |
+| `stop`, `leave` | red |
+| `update` | blurple |
+| `throwdown` | orange |
+| `anticheat` | yellow |
+| `admin` | dark orange |
+| `vote` | purple |
+| `chat`, `party` | light blue |
+| `map` | teal |
+| `plugins` | pink |
+| others | grey |
 
 Console: `discord` shows what is sent, `discord test` posts a test message.
 
