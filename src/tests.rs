@@ -556,3 +556,104 @@ fn steam_end_reasons_read_as_words() {
     assert!(ended_text(5, 3003, "").contains("server: lost its Steam relay"));
     assert!(ended_text(5, 5999, "x").ends_with("connection problem, problem detected: x"));
 }
+
+#[test]
+fn release_versions_compare_with_revisions() {
+    use crate::update::{newer, parse_version};
+    assert_eq!(parse_version("v1.0.8-1"), Some((vec![1, 0, 8], 1)));
+    assert_eq!(parse_version("1.0.8"), Some((vec![1, 0, 8], 0)));
+    assert_eq!(parse_version("latest"), None);
+    assert!(newer("v1.0.8", "1.0.5"));
+    assert!(newer("v1.0.8-1", "1.0.8"));
+    assert!(newer("v1.0.10", "1.0.9"));
+    assert!(!newer("v1.0.5-1", "1.0.8"));
+    assert!(!newer("v1.0.8", "1.0.8"));
+    assert!(!newer("nonsense", "1.0.8"));
+}
+
+#[test]
+fn update_install_replaces_the_package_and_keeps_the_rest() {
+    use crate::update::{install, STAGING_DIR};
+    let here = std::env::temp_dir().join(format!("reskate-install-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&here);
+    let package = here.join(STAGING_DIR).join("ReSkateServer-linux-x64");
+    std::fs::create_dir_all(package.join("docs")).unwrap();
+    std::fs::create_dir_all(here.join("docs")).unwrap();
+    std::fs::create_dir_all(here.join("plugins")).unwrap();
+    for (path, text) in [
+        ("ReSkateServer", "old binary"),
+        ("docs/plugins.md", "old docs"),
+        ("ReSkateServer.json", "{\"name\": \"mine\"}"),
+        ("plugins/info.lua", "-- mine"),
+    ] {
+        std::fs::write(here.join(path), text).unwrap();
+    }
+    for (path, text) in [
+        ("ReSkateServer", "new binary"),
+        ("libsteam_api.so", "lib"),
+        ("docs/plugins.md", "new docs"),
+        ("ReSkateServer.json", "{\"name\": \"from the archive\"}"),
+    ] {
+        std::fs::write(package.join(path), text).unwrap();
+    }
+    install(&package, &here).unwrap();
+    let read = |path: &str| std::fs::read_to_string(here.join(path)).unwrap();
+    assert_eq!(read("ReSkateServer"), "new binary");
+    assert_eq!(read("libsteam_api.so"), "lib");
+    assert_eq!(read("docs/plugins.md"), "new docs");
+    assert_eq!(read("ReSkateServer.json"), "{\"name\": \"mine\"}");
+    assert_eq!(read("plugins/info.lua"), "-- mine");
+    assert!(!here.join(STAGING_DIR).exists());
+    let _ = std::fs::remove_dir_all(&here);
+}
+
+#[test]
+fn logs_rotate_into_logs_and_keep_two_weeks() {
+    use crate::{LogFile, LOG_DAYS};
+    let folder = std::env::temp_dir().join(format!("reskate-logs-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&folder);
+    std::fs::create_dir_all(folder.join("logs")).unwrap();
+    for day in 1..=20 {
+        std::fs::write(folder.join(format!("logs/ReSkateServer-2026-09-{day:02}.log")), "old").unwrap();
+    }
+    std::fs::write(folder.join("ReSkateServer.log"), "yesterday\n").unwrap();
+    let mut log = LogFile { file: None, date: "2026-10-05".into(), folder: folder.clone() };
+    log.rotate("2026-10-04");
+    assert_eq!(std::fs::read_to_string(folder.join("logs/ReSkateServer-2026-10-04.log")).unwrap(), "yesterday\n");
+    assert!(log.file.is_some() && folder.join("ReSkateServer.log").exists());
+    let kept = std::fs::read_dir(folder.join("logs")).unwrap().count();
+    assert_eq!(kept, LOG_DAYS);
+    assert!(!folder.join("logs/ReSkateServer-2026-09-01.log").exists());
+    // A second rotation the same day adds to that day's file.
+    std::fs::write(folder.join("ReSkateServer.log"), "after a restart\n").unwrap();
+    log.rotate("2026-10-04");
+    assert_eq!(std::fs::read_to_string(folder.join("logs/ReSkateServer-2026-10-04.log")).unwrap(), "yesterday\nafter a restart\n");
+    let _ = std::fs::remove_dir_all(&folder);
+}
+
+#[test]
+fn update_refuses_a_binary_that_does_not_run_here() {
+    use crate::update::check_runs;
+    use std::os::unix::fs::PermissionsExt;
+    let folder = std::env::temp_dir().join(format!("reskate-runs-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&folder);
+    std::fs::create_dir_all(&folder).unwrap();
+    let script = |name: &str, body: &str| {
+        let path = folder.join(name);
+        std::fs::write(&path, format!("#!/bin/sh\n{body}\n")).unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        path
+    };
+    let current = script("current", "echo 'ReSkateServer 1.0.9'");
+    let older = script("older", "echo 'Unknown option --version.'; echo 'ReSkateServer [--config <file>]'; exit 1");
+    let glibc = script(
+        "glibc",
+        "echo \"./ReSkateServer: /lib/x86_64-linux-gnu/libm.so.6: version 'GLIBC_2.44' not found (required by ./ReSkateServer)\" >&2; exit 1",
+    );
+    assert!(check_runs(&current).is_ok());
+    assert!(check_runs(&older).is_ok());
+    let error = check_runs(&glibc).unwrap_err();
+    assert!(error.contains("GLIBC_2.44"), "{error}");
+    assert!(check_runs(&folder.join("missing")).is_err());
+    let _ = std::fs::remove_dir_all(&folder);
+}

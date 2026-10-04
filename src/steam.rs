@@ -541,6 +541,9 @@ pub struct SteamTransport {
     clock: Instant,
     // Why Steam ended a player's connection, until the host reads it for the log.
     ended: BTreeMap<u64, String>,
+    // A player's new connection that replaced their old one, held back for one poll so the host
+    // sees the old one end before the new one appears.
+    rejoining: BTreeMap<u64, Link>,
 }
 
 // Steam's reason for ending a connection (ESteamNetConnectionEnd), in words.
@@ -589,6 +592,7 @@ impl SteamTransport {
             capacity: MAX_PLAYERS,
             clock: Instant::now(),
             ended: BTreeMap::new(),
+            rejoining: BTreeMap::new(),
         }
     }
 
@@ -724,6 +728,10 @@ impl SteamTransport {
         while let Some(&id) = self.links.keys().next() {
             self.disconnect(id, "Disconnected.");
         }
+        for (id, link) in std::mem::take(&mut self.rejoining) {
+            self.links.insert(id, link);
+            self.disconnect(id, "Disconnected.");
+        }
         if self.ready {
             self.poll();
         }
@@ -765,6 +773,10 @@ impl SteamTransport {
         self.frame += 1;
         unsafe { (api.run_callbacks)(api.sockets) };
         let now = self.millis();
+        // Rejoins held back by the last poll: the host has dropped the old connection by now.
+        for (id, link) in std::mem::take(&mut self.rejoining) {
+            self.links.insert(id, link);
+        }
         let events: VecDeque<StatusChanged> = std::mem::take(&mut CALLBACK.lock().unwrap().events);
         for event in events {
             let info = event.info;
@@ -785,12 +797,15 @@ impl SteamTransport {
                 continue;
             }
             let close = |code: c_int, text: &CStr| unsafe { (api.close)(api.sockets, connection, code, text.as_ptr(), false) };
+            // A player whose old connection is still open (their game crashed or their network
+            // dropped, and they joined again) replaces it; the C++ server turned them away.
+            let others = self.links.len() - usize::from(existing.is_some()) + self.rejoining.len();
             if info.listen_socket != self.listener
                 || self.listener == 0
                 || id == 0
                 || id == self.local_id
-                || self.links.len() >= self.capacity - 1
-                || existing.is_some()
+                || others >= self.capacity - 1
+                || self.rejoining.contains_key(&id)
                 || identity.kind != IDENTITY_STEAM_ID
             {
                 close(4002, c"ReSkate session full or unavailable");
@@ -801,6 +816,12 @@ impl SteamTransport {
                 continue;
             }
             let link = self.new_link(connection, now);
+            if existing.is_some() {
+                self.disconnect(id, "Replaced by a new connection from the same player.");
+                self.ended.insert(id, "rejoined with a new connection".into());
+                self.rejoining.insert(id, link);
+                continue;
+            }
             self.ended.remove(&id);
             self.links.insert(id, link);
         }

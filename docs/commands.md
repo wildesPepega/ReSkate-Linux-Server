@@ -23,7 +23,7 @@
 | `bans` | List bans. |
 | `admin add\|remove <player or id>` | Manage admins (console only). |
 | `admins` | List admins. |
-| `update` | Check for a new ReSkate release now. |
+| `update` | Check for a new release and install it straight away; players are told to rejoin (console only). |
 | `plugins [reload]` | List the loaded plugins, or reload them from disk (see [plugins.md](plugins.md)). |
 | `quit` (also `exit`, `stop`) | Shut down cleanly. |
 | `help` | List commands. |

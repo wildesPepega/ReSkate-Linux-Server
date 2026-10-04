@@ -5,7 +5,9 @@ config fields and console messages. The differences are:
 
 | | Windows | Linux (this port) |
 |---|---|---|
-| Updates | Downloads and installs new releases itself, restarts when empty | Only **reports** new releases (startup, every 30 min, `update`). Replace the files manually. |
+| Updates | Downloads and installs new releases itself, restarts when empty | The same, from this project's Linux releases, with a checksum and a test start before installing; restarts in the same process |
+| Rejoining | A player whose old connection is still open is turned away until it times out | The new connection replaces the old one |
+| Logs | One growing `ReSkateServer.log` | A new `ReSkateServer.log` each day; earlier days in `logs/`, 14 days kept |
 | `--export-world-layers` | Reads the game files and writes `world-layers.json` | Not available (needs the game). Use the shipped `world-layers.json`, the one from the Windows package, or a player's `%LOCALAPPDATA%\ReSkate\cache\world-layers.json`. |
 | Steam libraries | `steam_api64.dll`, `steamclient64.dll`, `tier0_s64.dll`, `vstdlib_s64.dll` | `libsteam_api.so` (shipped) + `steamclient.so` (from SteamCMD) |
 | Packet limit | A player over the per-second packet limit is dropped at once | Dropped only after 4 seconds over the limit in a row, so the burst of queued packets after a network hiccup no longer kicks everyone |

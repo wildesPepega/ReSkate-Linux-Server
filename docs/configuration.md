@@ -68,7 +68,7 @@ the console or by an admin in game is saved back to this file.
 | `password` | `""` | Empty for anyone; otherwise players type it to join. |
 | `welcome` | `""` | A chat line sent to each player as they join. |
 | `listed` | `true` | `false` hides the server from the browser; players then need the code. |
-| `auto_update` | `true` | Check for new ReSkate releases (Linux: report only, see [differences.md](differences.md)). |
+| `auto_update` | `true` | Install new Linux builds on their own once the server is empty (see [installation.md](installation.md#updates)). |
 | `port`, `query_port` | `27015`, `27016` | Steam game server ports. `--port` / `--query-port` override them. |
 | `admins` | `[]` | SteamID64s **as strings** who may change settings in game, e.g. `["76561198000000000"]`. |
 | `bans` | `[]` | Players who can never join. Managed with `ban` / `unban`. |
