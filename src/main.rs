@@ -11,6 +11,7 @@ mod config;
 mod host;
 mod objects;
 mod party;
+mod plugins;
 mod password;
 mod protocol;
 mod speed;
@@ -307,6 +308,7 @@ fn run() -> i32 {
         write_log(&format!("Could not open the server: {e}"));
         return 1;
     }
+    host.load_plugins(&here.join("plugins"));
     write_log(&format!("{} is up on {} for {} players.", host.config.name, host.map_name(), host.config.max_players));
     write_log(&format!("Steam ID {}, public IP {}.", steam.steam_id(), steam.public_ip()));
     write_log(&format!(

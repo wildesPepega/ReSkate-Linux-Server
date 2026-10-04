@@ -63,6 +63,7 @@ Everything the Windows dedicated server does, except installing its own updates:
 - World layer sync (time of day), park layouts, password, bans
 - Custom maps from a `Mods/` folder
 - Clean shutdown on `quit`, Ctrl+C, SIGTERM and SIGHUP (signs out of Steam first)
+- **Lua plugins**: custom `/commands`, automatic messages, timers and events ([docs](docs/plugins.md))
 - Ready-made **Pterodactyl egg**
 
 ## Quick start
@@ -103,6 +104,7 @@ The archive contains:
 | `libsteam_api.so` | Steamworks API, must stay next to the binary |
 | `world-layers.json` | world layer catalogue (time of day etc.), optional |
 | `README.md`, `docs/` | this documentation |
+| `examples/plugins/` | example Lua plugins (copy them into `plugins/`) |
 | `LICENSE.txt`, `licenses/` | GPL-3.0 and third-party licenses |
 
 ## Documentation
@@ -113,8 +115,28 @@ The archive contains:
 | [Pterodactyl](docs/pterodactyl.md) | Importing and using the egg |
 | [Configuration](docs/configuration.md) | Every field of `ReSkateServer.json` |
 | [Commands](docs/commands.md) | Console, admin and chat commands |
+| [Plugins](docs/plugins.md) | Lua plugins: custom commands, automatic messages, API reference |
 | [Building](docs/building.md) | Compiling from source, packaging, tests, code layout |
 | [Differences](docs/differences.md) | What differs from the Windows server |
+
+## Plugins
+
+Extend the server with small Lua scripts in a `plugins/` folder, no recompiling needed:
+
+```lua
+-- plugins/info.lua
+reskate.command("discord", { description = "Our Discord server" }, function(player)
+    return "Join us: https://discord.gg/your-invite"
+end)
+
+reskate.automessage({
+    interval = 600,
+    messages = { "Welcome to {server}! Type /help for our commands." },
+})
+```
+
+Type `plugins reload` in the console and `/discord` works in game. See the
+[plugin docs](docs/plugins.md) for the full API and [`examples/plugins/`](examples/plugins/).
 
 ## Building from source
 
@@ -131,6 +153,7 @@ Needs Rust 1.80+ and a C compiler (for zstd). See [docs/building.md](docs/buildi
 ```
 ├── src/                 Rust source code
 ├── dist-assets/         files shipped in the package (libsteam_api.so, world-layers.json, licenses)
+├── examples/plugins/    example Lua plugins
 ├── pterodactyl/         Pterodactyl egg
 ├── builds/              prebuilt Linux x64 package
 ├── docs/                documentation

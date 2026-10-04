@@ -21,6 +21,7 @@ pbkdf2 = { version = "0.12", default-features = false, features = ["hmac"] }
 hmac = "0.12"
 sha2 = "0.10"
 ureq = "2"
+mlua = { version = "0.12.2", features = ["lua54", "vendored"] }
 
 [profile.release]
 opt-level = 3

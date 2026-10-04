@@ -121,6 +121,7 @@ SteamCMD has to be set up for the `reskate` user (`/home/reskate/.steam/sdk64/st
 | `ReSkateServer.json` | configuration, written on first start and on every change |
 | `ReSkateServer.log` | log file, appended to |
 | `Mods/` | custom maps (create it yourself) |
+| `plugins/` | Lua plugins (create it yourself, see [plugins.md](plugins.md)) |
 
 ## Custom maps
 
