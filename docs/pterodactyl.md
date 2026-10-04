@@ -25,8 +25,10 @@ release). It uses the `ghcr.io/parkervcp/yolks:debian` image.
 3. If **Download URL** is set: downloads the archive and unpacks it into the server folder.
    Otherwise: upload the contents of `ReSkateServer-linux-x64.tar.gz` via the file manager or SFTP.
 
-Reinstalling the server (Settings → Reinstall Server) updates it to the latest release; the
-config, `Mods/` and logs are kept as long as the archive does not contain them.
+**Updates install themselves**: the server downloads a new release in the background and
+installs it once nobody is connected, restarting in place (see
+[installation.md](installation.md#updates)). Reinstalling the server (Settings → Reinstall Server)
+also updates it; the config, `Mods/`, `plugins/` and logs are kept.
 
 ## Variables
 

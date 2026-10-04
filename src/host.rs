@@ -410,6 +410,10 @@ impl Host {
     pub fn map_name(&self) -> String {
         map_label(&self.config.map)
     }
+    // Everyone connected, including players still joining.
+    pub fn connected(&self) -> usize {
+        self.guests.len()
+    }
     pub fn players(&self) -> u32 {
         self.guests.values().filter(|g| g.handshaken).count() as u32
     }

@@ -34,12 +34,24 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{channel, Receiver, TryRecvError};
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 use steam::{Advertisement, SteamServer, SteamTransport};
 
 static STOPPING: AtomicBool = AtomicBool::new(false);
-static LOG_FILE: Mutex<Option<File>> = Mutex::new(None);
+static LOG: Mutex<Option<LogFile>> = Mutex::new(None);
+static HERE: OnceLock<PathBuf> = OnceLock::new();
+// run()'s answer when the server installed an update and starts again in place.
+const RESTART: i32 = -2;
+// Days of rotated logs kept in logs/.
+const LOG_DAYS: usize = 14;
+
+// ReSkateServer.log holds today; each day before moves to logs/ReSkateServer-<date>.log.
+struct LogFile {
+    file: Option<File>,
+    date: String,
+    folder: PathBuf,
+}
 
 // Microseconds on the monotonic clock. Session timings share it.
 pub fn now_us() -> u64 {
@@ -48,27 +60,89 @@ pub fn now_us() -> u64 {
     time.tv_sec as u64 * 1_000_000 + time.tv_nsec as u64 / 1000
 }
 
-fn stamp() -> (String, String) {
+fn local_time(seconds: libc::time_t) -> (String, String) {
     unsafe {
-        let now = libc::time(std::ptr::null_mut());
         let mut local: libc::tm = std::mem::zeroed();
-        libc::localtime_r(&now, &mut local);
+        libc::localtime_r(&seconds, &mut local);
         let date = format!("{:04}-{:02}-{:02}", local.tm_year + 1900, local.tm_mon + 1, local.tm_mday);
         let time = format!("{:02}:{:02}:{:02}", local.tm_hour, local.tm_min, local.tm_sec);
         (date, time)
     }
 }
 
+fn stamp() -> (String, String) {
+    local_time(unsafe { libc::time(std::ptr::null_mut()) })
+}
+
+impl LogFile {
+    fn current(&self) -> PathBuf {
+        self.folder.join("ReSkateServer.log")
+    }
+    fn open(&mut self) {
+        self.file = OpenOptions::new().create(true).append(true).open(self.current()).ok();
+    }
+    // Moves ReSkateServer.log (holding `date`) to logs/ and drops the oldest beyond LOG_DAYS.
+    fn rotate(&mut self, date: &str) {
+        self.file = None;
+        let logs = self.folder.join("logs");
+        if std::fs::create_dir_all(&logs).is_ok() {
+            let target = logs.join(format!("ReSkateServer-{date}.log"));
+            if target.exists() {
+                // A second rotation the same day (a restart after midnight): add to it.
+                if let (Ok(mut old), Ok(mut out)) = (File::open(self.current()), OpenOptions::new().append(true).open(&target)) {
+                    if std::io::copy(&mut old, &mut out).is_ok() {
+                        let _ = std::fs::remove_file(self.current());
+                    }
+                }
+            } else {
+                let _ = std::fs::rename(self.current(), &target);
+            }
+            if let Ok(entries) = std::fs::read_dir(&logs) {
+                let mut old: Vec<PathBuf> = entries
+                    .flatten()
+                    .map(|e| e.path())
+                    .filter(|p| p.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.starts_with("ReSkateServer-") && n.ends_with(".log")))
+                    .collect();
+                old.sort();
+                while old.len() > LOG_DAYS {
+                    let _ = std::fs::remove_file(old.remove(0));
+                }
+            }
+        }
+        self.open();
+    }
+}
+
+// Opens the log; one left from an earlier day is rotated first.
+fn open_log(folder: &Path) {
+    let mut log = LogFile { file: None, date: stamp().0, folder: folder.to_path_buf() };
+    let modified = std::fs::metadata(log.current()).and_then(|m| m.modified()).ok();
+    if let Some(seconds) = modified.and_then(|m| m.duration_since(std::time::UNIX_EPOCH).ok()) {
+        let (date, _) = local_time(seconds.as_secs() as libc::time_t);
+        if date != log.date {
+            log.rotate(&date);
+        }
+    }
+    log.open();
+    *LOG.lock().unwrap_or_else(|e| e.into_inner()) = Some(log);
+}
+
 fn write_log(text: &str) {
-    let mut file = LOG_FILE.lock().unwrap_or_else(|e| e.into_inner());
+    let mut log = LOG.lock().unwrap_or_else(|e| e.into_inner());
     let (date, time) = stamp();
     // One write per line, flushed at once, so a hosting panel reading the pipe sees it now.
     let mut out = std::io::stdout().lock();
     let _ = writeln!(out, "[{time}] {text}");
     let _ = out.flush();
-    if let Some(file) = file.as_mut() {
-        let _ = writeln!(file, "[{date} {time}] {text}");
-        let _ = file.flush();
+    if let Some(log) = log.as_mut() {
+        if log.date != date {
+            let previous = std::mem::replace(&mut log.date, date.clone());
+            log.rotate(&previous);
+        }
+        if let Some(file) = log.file.as_mut() {
+            let _ = writeln!(file, "[{date} {time}] {text}");
+            let _ = file.flush();
+        }
     }
 }
 
@@ -76,12 +150,17 @@ extern "C" fn on_signal(_: libc::c_int) {
     STOPPING.store(true, Ordering::SeqCst);
 }
 
+// The server's folder, read once: after an update replaced the binary, /proc/self/exe no longer
+// resolves.
 fn folder() -> PathBuf {
-    std::env::current_exe()
-        .ok()
-        .and_then(|path| path.canonicalize().ok())
-        .and_then(|path| path.parent().map(Path::to_path_buf))
-        .unwrap_or_else(|| PathBuf::from("."))
+    HERE.get_or_init(|| {
+        std::env::current_exe()
+            .ok()
+            .and_then(|path| path.canonicalize().ok())
+            .and_then(|path| path.parent().map(Path::to_path_buf))
+            .unwrap_or_else(|| PathBuf::from("."))
+    })
+    .clone()
 }
 
 // Steam's client library looks in ~/.steam/sdk64. A steamclient.so put next to the server is
@@ -135,10 +214,10 @@ fn panic_text(payload: Box<dyn std::any::Any + Send>) -> String {
 
 fn update_message(check: &update::UpdateCheck) -> String {
     let mut text = format!(
-        "ReSkate {} is out; this Linux server is {}. It cannot install the Windows release on its own: replace it with a Linux build of {} and restart it.",
+        "ReSkate {} is out; this Linux server is {}. It updates itself once a Linux build of it is released (github.com/{}).",
         check.version,
         update::VERSION,
-        check.version
+        update::LINUX_REPO
     );
     if check.new_game_build {
         text += " The new release supports a newer skate. build: players on it cannot join this server until then.";
@@ -154,7 +233,7 @@ struct Options {
 }
 
 fn usage() -> &'static str {
-    "ReSkateServer [--config <file>] [--port <port>] [--query-port <port>] [--no-update]\n\
+    "ReSkateServer [--config <file>] [--port <port>] [--query-port <port>] [--no-update] [--version]\n\
      Commands are read from the console (stdin); type help once it runs."
 }
 
@@ -192,7 +271,29 @@ fn parse_options() -> Result<Options, String> {
     Ok(options)
 }
 
+// Starts the new binary in this process: same PID, console and arguments, so a hosting panel
+// sees the server keep running.
+fn restart() -> i32 {
+    use std::os::unix::process::CommandExt;
+    let error = std::process::Command::new(folder().join("ReSkateServer")).args(std::env::args_os().skip(1)).exec();
+    write_log(&format!("Could not restart after the update: {error}. Start the server again."));
+    1
+}
+
+fn stage_in_background(release: update::LinuxRelease, here: PathBuf) -> Receiver<(update::LinuxRelease, Result<PathBuf, String>)> {
+    let (sender, receiver) = channel();
+    std::thread::spawn(move || {
+        let staged = update::stage(&release, &here);
+        let _ = sender.send((release, staged));
+    });
+    receiver
+}
+
 fn run() -> i32 {
+    if std::env::args().skip(1).any(|a| a == "--version" || a == "-V") {
+        println!("ReSkateServer {}", update::VERSION);
+        return 0;
+    }
     let options = match parse_options() {
         Ok(options) => options,
         Err(text) => {
@@ -202,9 +303,8 @@ fn run() -> i32 {
     };
     let here = folder();
     let config_file = options.config.clone().unwrap_or_else(|| here.join("ReSkateServer.json"));
-    if let Ok(file) = OpenOptions::new().create(true).append(true).open(here.join("ReSkateServer.log")) {
-        *LOG_FILE.lock().unwrap() = Some(file);
-    }
+    open_log(&here);
+    let _ = std::fs::remove_dir_all(here.join(update::STAGING_DIR)); // left by an interrupted update
 
     let fresh = !config_file.exists();
     let mut added = Vec::new();
@@ -254,13 +354,25 @@ fn run() -> i32 {
     if auto_update {
         write_log("Checking for updates...");
         let check = update::check_for_update();
-        if check.available {
+        if let Some(release) = &check.linux {
+            // Nobody is on yet: install before signing in to Steam.
+            write_log(&format!("ReSkate Linux Server {} is available (this is {}); installing it.", release.version, update::VERSION));
+            match update::stage(release, &here).and_then(|package| update::install(&package, &here)) {
+                Ok(()) => {
+                    write_log(&format!("Installed {}; restarting.", release.version));
+                    return RESTART;
+                }
+                Err(e) => write_log(&format!("The update failed: {e}. Starting {} instead.", update::VERSION)),
+            }
+        } else if check.available {
             write_log(&update_message(&check));
             announced_version = check.version.clone();
-        } else if check.problem.is_empty() {
-            write_log(&format!("The server is up to date ({}).", check.version));
-        } else {
-            write_log(&format!("Update check skipped: {}.", check.problem));
+        } else if check.problem.is_empty() && check.linux_problem.is_empty() {
+            write_log(&format!("The server is up to date ({}).", update::VERSION));
+        }
+        if !check.problem.is_empty() || !check.linux_problem.is_empty() {
+            let problem = if check.linux_problem.is_empty() { &check.problem } else { &check.linux_problem };
+            write_log(&format!("Update check skipped: {problem}."));
         }
     }
     // World layers are optional: without the players' catalog every player keeps their own.
@@ -329,6 +441,11 @@ fn run() -> i32 {
     let mut next_update_check = Instant::now() + update_interval;
     let mut update_check: Option<Receiver<update::UpdateCheck>> = None;
     let mut update_now = false;
+    // A newer Linux build: being downloaded, or downloaded and waiting for an empty server.
+    let mut staging: Option<Receiver<(update::LinuxRelease, Result<PathBuf, String>)>> = None;
+    let mut staged: Option<(update::LinuxRelease, PathBuf)> = None;
+    let mut install_now = false;
+    let mut restarting = false;
     let start_check = || {
         let (sender, receiver) = channel();
         std::thread::spawn(move || {
@@ -354,13 +471,14 @@ fn run() -> i32 {
             if line.is_empty() {
                 continue;
             }
-            // "update": check now and report.
+            // "update": check now and install straight away (players are told to rejoin).
             if line == "update" {
                 update_now = true;
-                if update_check.is_none() {
+                install_now = true;
+                if staged.is_none() && staging.is_none() && update_check.is_none() {
                     update_check = Some(start_check());
+                    write_log("Checking for updates...");
                 }
-                write_log("Checking for updates...");
                 continue;
             }
             match catch_unwind(AssertUnwindSafe(|| host.command(&line, 0))) {
@@ -376,23 +494,64 @@ fn run() -> i32 {
             match receiver.try_recv() {
                 Ok(check) => {
                     next_update_check = now + update_interval;
-                    if check.available {
+                    if let Some(release) = check.linux.clone() {
+                        if staging.is_none() && !matches!(&staged, Some((r, _)) if r.version == release.version) {
+                            write_log(&format!("ReSkate Linux Server {} is available (this is {}); downloading it.", release.version, update::VERSION));
+                            staging = Some(stage_in_background(release, here.clone()));
+                        }
+                    } else if check.available {
                         if update_now || check.version != announced_version {
                             write_log(&update_message(&check));
                             announced_version = check.version.clone();
                         }
                     } else if update_now {
-                        write_log(&if check.problem.is_empty() {
-                            format!("The server is up to date ({}).", check.version)
+                        let problem = if check.linux_problem.is_empty() { &check.problem } else { &check.linux_problem };
+                        write_log(&if problem.is_empty() {
+                            format!("The server is up to date ({}).", update::VERSION)
                         } else {
-                            format!("Update check failed: {}.", check.problem)
+                            format!("Update check failed: {problem}.")
                         });
+                    }
+                    if check.linux.is_none() {
+                        install_now = false;
                     }
                     update_now = false;
                     update_check = None;
                 }
                 Err(TryRecvError::Disconnected) => update_check = None,
                 Err(TryRecvError::Empty) => {}
+            }
+        }
+        if let Some(receiver) = &staging {
+            match receiver.try_recv() {
+                Ok((release, Ok(package))) => {
+                    if host.connected() > 0 && !install_now {
+                        write_log(&format!("ReSkate Linux Server {} is ready; it installs when the server is empty.", release.version));
+                    }
+                    staged = Some((release, package));
+                    staging = None;
+                }
+                Ok((release, Err(e))) => {
+                    write_log(&format!("Could not download ReSkate Linux Server {}: {e}. Trying again at the next check.", release.version));
+                    install_now = false;
+                    staging = None;
+                }
+                Err(TryRecvError::Disconnected) => staging = None,
+                Err(TryRecvError::Empty) => {}
+            }
+        }
+        if let Some((release, package)) = &staged {
+            if host.connected() == 0 || install_now {
+                match update::install(package, &here) {
+                    Ok(()) => {
+                        write_log(&format!("Installed ReSkate Linux Server {}; restarting.", release.version));
+                        restarting = true;
+                        STOPPING.store(true, Ordering::SeqCst);
+                    }
+                    Err(e) => write_log(&format!("Could not install ReSkate Linux Server {}: {e}.", release.version)),
+                }
+                staged = None;
+                install_now = false;
             }
         }
         if now >= next_advertise {
@@ -427,14 +586,19 @@ fn run() -> i32 {
         }
         std::thread::sleep(Duration::from_millis(2));
     }
-    write_log("Shutting down.");
-    if let Err(p) = catch_unwind(AssertUnwindSafe(|| host.stop("The server is shutting down."))) {
+    write_log(if restarting { "Restarting for the update." } else { "Shutting down." });
+    let reason = if restarting { "The server is restarting for an update. Join again in a minute." } else { "The server is shutting down." };
+    if let Err(p) = catch_unwind(AssertUnwindSafe(|| host.stop(reason))) {
         write_log(&format!("Server error: {}", panic_text(p)));
     }
     // The networking closes before Steam itself shuts down.
     drop(host);
     steam.stop();
-    0
+    if restarting {
+        RESTART
+    } else {
+        0
+    }
 }
 
 fn main() {
@@ -446,6 +610,10 @@ fn main() {
         libc::signal(libc::SIGHUP, on_signal as extern "C" fn(libc::c_int) as libc::sighandler_t);
         libc::signal(libc::SIGPIPE, libc::SIG_IGN);
     }
-    let code = run();
+    folder(); // before an update can replace the binary
+    let mut code = run();
+    if code == RESTART {
+        code = restart();
+    }
     std::process::exit(code);
 }

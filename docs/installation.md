@@ -119,7 +119,8 @@ SteamCMD has to be set up for the `reskate` user (`/home/reskate/.steam/sdk64/st
 | File | |
 |---|---|
 | `ReSkateServer.json` | configuration, written on first start and on every change |
-| `ReSkateServer.log` | log file, appended to |
+| `ReSkateServer.log` | today's log |
+| `logs/` | earlier days, `logs/ReSkateServer-<date>.log`; the last 14 days are kept |
 | `Mods/` | custom maps (create it yourself) |
 | `plugins/` | Lua plugins (create it yourself, see [plugins.md](plugins.md)) |
 
@@ -137,10 +138,25 @@ package or from a player's `%LOCALAPPDATA%\ReSkate\cache` works unchanged.
 
 ## Updates
 
-The server checks for a new ReSkate release on startup, every 30 minutes and on the `update` command,
-and reports it in the console. Unlike the Windows server it cannot install the update itself: replace
-the files with a new Linux build (`ReSkateServer.json`, `Mods/` and logs are kept). Disable the check
-with `"auto_update": false` or `--no-update`.
+The server **updates itself** from this project's
+[releases](https://github.com/wildesPepega/ReSkate-Linux-Server/releases):
+
+1. It checks on startup and every 30 minutes.
+2. A newer release is downloaded in the background, checked against GitHub's SHA-256 checksum and
+   test-started (`--version`) so that a build that cannot run on this system is never installed.
+3. Once **nobody is connected**, it replaces its files and restarts in the same process. Hosting
+   panels see the server keep running; the console stays attached. At startup, with nobody on yet,
+   it installs right away.
+4. `ReSkateServer.json`, `Mods/`, `plugins/` and the logs are never touched.
+
+The console command `update` checks and installs straight away; connected players are told to
+join again in a minute. Turn automatic updates off with `"auto_update": false` or `--no-update`
+(`update` still works then).
+
+When ReSkate itself releases a version that has no Linux build yet, the server says so and keeps
+running; it updates once the Linux build is out.
+
+The release check needs to reach `api.github.com` and `github.com` over HTTPS.
 
 ## Why players left
 
@@ -156,6 +172,7 @@ Steam's code:
 | `Disconnected: Steam 5005/5006/5008/5009, …` | Steam could not keep a route between player and server |
 | `Timed out waiting for gameplay data.` | connected, but the player's game sent nothing for 30 s (frozen or stuck loading) |
 | `A player ended their session.` | the player's game said goodbye |
+| `Disconnected: rejoined with a new connection.` | the player joined again while their old connection was still open; the new one replaced it |
 
 Many players leaving with 3xxx or 5xxx codes at the same moment point to the server's network.
 Single 1000s are just people leaving.
