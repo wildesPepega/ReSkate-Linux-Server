@@ -547,3 +547,12 @@ fn plugins_add_commands_messages_and_events() {
     assert!(plugins.reload().join("\n").contains("5 loaded"));
     let _ = std::fs::remove_dir_all(&folder);
 }
+
+#[test]
+fn steam_end_reasons_read_as_words() {
+    use crate::steam::ended_text;
+    assert_eq!(ended_text(4, 1000, "Left the session"), "Steam 1000, closed by the player's game, closed by player: Left the session");
+    assert_eq!(ended_text(5, 4001, ""), "Steam 4001, timed out: the player stopped answering, problem detected");
+    assert!(ended_text(5, 3003, "").contains("server: lost its Steam relay"));
+    assert!(ended_text(5, 5999, "x").ends_with("connection problem, problem detected: x"));
+}

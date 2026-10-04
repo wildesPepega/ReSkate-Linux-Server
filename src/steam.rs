@@ -539,6 +539,38 @@ pub struct SteamTransport {
     next_sweep: u64,
     capacity: usize,
     clock: Instant,
+    // Why Steam ended a player's connection, until the host reads it for the log.
+    ended: BTreeMap<u64, String>,
+}
+
+// Steam's reason for ending a connection (ESteamNetConnectionEnd), in words.
+fn end_reason_text(code: i32) -> &'static str {
+    match code {
+        1000..=1999 => "closed by the player's game",
+        2000..=2999 => "closed by the player's game after an error",
+        3001 => "server: Steam is in offline mode",
+        3002 => "server: cannot reach enough Steam relays",
+        3003 => "server: lost its Steam relay",
+        3004 => "server: network configuration problem",
+        3005 => "server: not allowed to use the network",
+        3000..=3999 => "server-side network problem",
+        4001 => "timed out: the player stopped answering",
+        4002 | 4003 => "player's connection failed authentication",
+        4006 => "player's Steam is too old or too new",
+        4000..=4999 => "problem on the player's side",
+        5003 => "timed out",
+        5005 => "Steam connectivity problem",
+        5006 => "no Steam relay route to the player",
+        5008 | 5009 => "could not establish a route to the player",
+        5000..=5999 => "connection problem",
+        _ => "connection ended",
+    }
+}
+
+pub(crate) fn ended_text(state: i32, code: i32, debug: &str) -> String {
+    let who = if state == STATE_CLOSED_BY_PEER { "closed by player" } else { "problem detected" };
+    let detail = if debug.is_empty() { String::new() } else { format!(": {debug}") };
+    format!("Steam {code}, {}, {who}{detail}", end_reason_text(code))
 }
 
 impl SteamTransport {
@@ -556,6 +588,7 @@ impl SteamTransport {
             next_sweep: 0,
             capacity: MAX_PLAYERS,
             clock: Instant::now(),
+            ended: BTreeMap::new(),
         }
     }
 
@@ -700,6 +733,11 @@ impl SteamTransport {
         self.peers = self.links.iter().map(|(&id, link)| (id, link.connected)).collect();
     }
 
+    // Why Steam ended this player's connection, once (None if the server closed it).
+    pub fn take_end_reason(&mut self, id: u64) -> Option<String> {
+        self.ended.remove(&id)
+    }
+
     pub fn peers(&self) -> Vec<TransportPeer> {
         self.peers.iter().map(|&(id, connected)| TransportPeer { id, connected }).collect()
     }
@@ -763,6 +801,7 @@ impl SteamTransport {
                 continue;
             }
             let link = self.new_link(connection, now);
+            self.ended.remove(&id);
             self.links.insert(id, link);
         }
         // Connected links report changes through the status callback, so read their state
@@ -780,6 +819,7 @@ impl SteamTransport {
             link.recheck = false;
             let mut info: ConnectionInfo = unsafe { std::mem::zeroed() };
             if !unsafe { (api.get_info)(api.sockets, link.handle, &mut info) } {
+                self.ended.insert(id, "Steam connection disappeared".into());
                 self.disconnect(id, "Steam connection disappeared.");
                 continue;
             }
@@ -794,8 +834,10 @@ impl SteamTransport {
                 let debug = info.end_debug;
                 let bytes: Vec<u8> = debug.iter().take_while(|&&c| c != 0).map(|&c| c as u8).collect();
                 let text = String::from_utf8_lossy(&bytes).into_owned();
+                self.ended.insert(id, ended_text(state, info.end_reason, &text));
                 self.disconnect(id, if text.is_empty() { "Steam connection closed." } else { &text });
             } else if now.wrapping_sub(link.connecting_since) > 20000 {
+                self.ended.insert(id, "Steam connection did not finish connecting within 20 s".into());
                 self.disconnect(id, "Steam connection timed out.");
             }
         }
