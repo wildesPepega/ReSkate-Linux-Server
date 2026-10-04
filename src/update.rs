@@ -143,6 +143,27 @@ fn fetch_linux() -> Result<Option<LinuxRelease>, String> {
     }))
 }
 
+// "v1.0.8-2" from ".../releases/tag/v1.0.8-2".
+pub fn tag_from_location(location: &str) -> Option<String> {
+    let tag = location.split("/releases/tag/").nth(1)?.split(['?', '#', '/']).next()?;
+    parse_version(tag).map(|_| tag.to_string())
+}
+
+// Whether this port has a newer release, read from where github.com/<repo>/releases/latest
+// redirects to. That page is not counted against GitHub's API limit (60 requests an hour per
+// address, shared by every server behind it), so an empty server can ask often.
+pub fn quick_check() -> Result<bool, String> {
+    let agent = ureq::AgentBuilder::new()
+        .timeout(Duration::from_secs(8))
+        .redirects(0)
+        .user_agent(&format!("ReSkateServer/{VERSION} (Linux)"))
+        .build();
+    let url = format!("https://github.com/{LINUX_REPO}/releases/latest");
+    let response = agent.head(&url).call().map_err(|_| "GitHub could not be reached".to_string())?;
+    let tag = response.header("location").and_then(tag_from_location).ok_or("GitHub did not name the latest release")?;
+    Ok(newer(&tag, VERSION))
+}
+
 // Asks GitHub for both latest releases; blocks for a few seconds at most.
 pub fn check_for_update() -> UpdateCheck {
     let (linux, linux_problem) = match fetch_linux() {

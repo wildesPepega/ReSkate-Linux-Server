@@ -61,8 +61,8 @@ ReSkateServer [--config <file>] [--port <port>] [--query-port <port>] [--no-upda
 
 | Option | Effect |
 |---|---|
-| `--port <port>` | game port, overrides `port` from the config |
-| `--query-port <port>` | query port, overrides `query_port` |
+| `--port <port>` | game port (default 27015) |
+| `--query-port <port>` | query port (default 27016) |
 | `--config <file>` | use another config file (default `ReSkateServer.json` next to the binary) |
 | `--no-update` | do not check for new ReSkate releases |
 | `--help` | print usage |
@@ -77,8 +77,8 @@ Type `quit`, press Ctrl+C or send SIGTERM / SIGHUP. The server signs out of Stea
 
 | Port | Default | Protocol | Purpose |
 |---|---|---|---|
-| `port` | 27015 | UDP | Steam game server port |
-| `query_port` | 27016 | UDP | Steam server queries (ping in the browser) |
+| `--port` | 27015 | UDP | Steam game server port |
+| `--query-port` | 27016 | UDP | Steam server queries (ping in the browser) |
 
 Opening them is optional: players connect through Steam's relay network. With open ports the browser
 shows the ping and joins are a little faster.
@@ -141,9 +141,11 @@ package or from a player's `%LOCALAPPDATA%\ReSkate\cache` works unchanged.
 The server **updates itself** from this project's
 [releases](https://github.com/wildesPepega/ReSkate-Linux-Server/releases):
 
-1. It checks on startup and every 30 minutes.
+1. It checks on startup, every 30 minutes, **10 seconds after the last player left** and then
+   every 5 minutes while the server stays empty.
 2. A newer release is downloaded in the background, checked against GitHub's SHA-256 checksum and
    test-started (`--version`) so that a build that cannot run on this system is never installed.
+   A release that comes out while players are on is downloaded right away and waits.
 3. Once **nobody is connected**, it replaces its files and restarts in the same process. Hosting
    panels see the server keep running; the console stays attached. At startup, with nobody on yet,
    it installs right away.
@@ -156,7 +158,10 @@ join again in a minute. Turn automatic updates off with `"auto_update": false` o
 When ReSkate itself releases a version that has no Linux build yet, the server says so and keeps
 running; it updates once the Linux build is out.
 
-The release check needs to reach `api.github.com` and `github.com` over HTTPS.
+The release check needs to reach `api.github.com` and `github.com` over HTTPS. The frequent checks
+of an empty server read the redirect of `github.com/…/releases/latest`, which does not count
+against GitHub's API limit of 60 requests an hour per address, so many servers behind one address
+are fine; the API is only asked when there is a new release.
 
 ## Why players left
 
