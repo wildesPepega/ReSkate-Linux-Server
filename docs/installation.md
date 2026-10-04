@@ -154,7 +154,7 @@ Steam's code:
 | `Disconnected: Steam 5003, timed out, …` | the connection timed out somewhere between player and server |
 | `Disconnected: Steam 3xxx, server: …` | a problem on the **server's** side (its network or Steam relay); look at the host |
 | `Disconnected: Steam 5005/5006/5008/5009, …` | Steam could not keep a route between player and server |
-| `Timed out waiting for gameplay data.` | connected, but the player's game sent nothing for 10 s (frozen, alt-tabbed while loading, …) |
+| `Timed out waiting for gameplay data.` | connected, but the player's game sent nothing for 30 s (frozen or stuck loading) |
 | `A player ended their session.` | the player's game said goodbye |
 
 Many players leaving with 3xxx or 5xxx codes at the same moment point to the server's network.

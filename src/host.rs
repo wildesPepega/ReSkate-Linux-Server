@@ -29,6 +29,11 @@ activity-log on|off | announce-throwdowns on|off | parties [on|off] | party-size
 score-check [off|warn|kick] | score-allow [<fingerprint>|remove <fingerprint>]\n\
 admin add|remove <SteamID64> | admins | plugins [reload] | update | quit";
 
+// How long a connected player's game may send nothing before it is dropped. The C++ server uses
+// 10 s, but games freeze for longer while loading what a new throwdown drop needs (Spot Battles
+// especially), and those players were dropped. Steam ends dead connections on its own.
+const GAMEPLAY_TIMEOUT_US: u64 = 30_000_000;
+
 const TIMES: [&str; 8] = ["default", "morning", "noon", "afternoon", "evening", "night", "weatherday", "weathernight"];
 
 fn nonce() -> u64 {
@@ -1356,7 +1361,7 @@ impl Host {
                 continue;
             }
             if (!g.handshaken && g.connected_at != 0 && now.wrapping_sub(g.connected_at) > handshake_timeout)
-                || (g.handshaken && now.wrapping_sub(g.last_packet) > 10_000_000)
+                || (g.handshaken && now.wrapping_sub(g.last_packet) > GAMEPLAY_TIMEOUT_US)
             {
                 self.drop_guest(id, "Timed out waiting for gameplay data.");
             }
