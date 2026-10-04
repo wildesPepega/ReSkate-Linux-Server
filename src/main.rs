@@ -304,6 +304,7 @@ fn run() -> i32 {
     let here = folder();
     let config_file = options.config.clone().unwrap_or_else(|| here.join("ReSkateServer.json"));
     open_log(&here);
+    write_log(&format!("ReSkate Linux Server {}", update::VERSION));
     let _ = std::fs::remove_dir_all(here.join(update::STAGING_DIR)); // left by an interrupted update
 
     let fresh = !config_file.exists();

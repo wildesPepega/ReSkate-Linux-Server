@@ -36,7 +36,7 @@
 
 ---@class Reskate
 ---@field plugin ReskatePluginInfo
----@field version string Server version, e.g. "1.0.8-1"
+---@field version string Server version, e.g. "1.0.8-2"
 reskate = {}
 
 ---Adds the chat command /name. The handler's return value is sent to the player who typed it.

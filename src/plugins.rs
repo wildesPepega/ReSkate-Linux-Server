@@ -23,7 +23,7 @@ const RESERVED: &[&str] = &[
     "distances", "placement", "object-placement", "clear-objects", "noclip", "noclip-allow", "nobail", "nobail-allow",
     "boosts", "boosts-allow", "tuning", "tuning-enforce", "tpall", "tphere", "park", "layer", "layers", "layer-sync",
     "world-layer-sync", "tod", "time", "votes", "vote-cancel", "activity-log", "announce-throwdowns", "parties",
-    "party-size", "speed-check", "score-check", "score-allow", "admin", "admins", "update", "quit", "plugins",
+    "party-size", "speed-check", "score-check", "score-allow", "admin", "admins", "update", "quit", "plugins", "version",
 ];
 
 #[derive(Clone)]
