@@ -657,3 +657,20 @@ fn update_refuses_a_binary_that_does_not_run_here() {
     assert!(check_runs(&folder.join("missing")).is_err());
     let _ = std::fs::remove_dir_all(&folder);
 }
+
+#[test]
+fn latest_release_tag_comes_from_the_redirect() {
+    use crate::update::tag_from_location;
+    let base = "https://github.com/wildesPepega/ReSkate-Linux-Server/releases/tag/";
+    assert_eq!(tag_from_location(&format!("{base}v1.0.8-2")).as_deref(), Some("v1.0.8-2"));
+    assert_eq!(tag_from_location(&format!("{base}v1.0.9?x=1")).as_deref(), Some("v1.0.9"));
+    assert_eq!(tag_from_location("https://github.com/wildesPepega/ReSkate-Linux-Server/releases"), None);
+    assert_eq!(tag_from_location(&format!("{base}latest-build")), None);
+}
+
+// Asks the real GitHub: cargo test --release -- --ignored quick_check_reaches_github
+#[test]
+#[ignore]
+fn quick_check_reaches_github() {
+    assert!(crate::update::quick_check().is_ok());
+}

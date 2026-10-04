@@ -141,9 +141,11 @@ package or from a player's `%LOCALAPPDATA%\ReSkate\cache` works unchanged.
 The server **updates itself** from this project's
 [releases](https://github.com/wildesPepega/ReSkate-Linux-Server/releases):
 
-1. It checks on startup and every 30 minutes.
+1. It checks on startup, every 30 minutes, **10 seconds after the last player left** and then
+   every 5 minutes while the server stays empty.
 2. A newer release is downloaded in the background, checked against GitHub's SHA-256 checksum and
    test-started (`--version`) so that a build that cannot run on this system is never installed.
+   A release that comes out while players are on is downloaded right away and waits.
 3. Once **nobody is connected**, it replaces its files and restarts in the same process. Hosting
    panels see the server keep running; the console stays attached. At startup, with nobody on yet,
    it installs right away.
@@ -156,7 +158,10 @@ join again in a minute. Turn automatic updates off with `"auto_update": false` o
 When ReSkate itself releases a version that has no Linux build yet, the server says so and keeps
 running; it updates once the Linux build is out.
 
-The release check needs to reach `api.github.com` and `github.com` over HTTPS.
+The release check needs to reach `api.github.com` and `github.com` over HTTPS. The frequent checks
+of an empty server read the redirect of `github.com/…/releases/latest`, which does not count
+against GitHub's API limit of 60 requests an hour per address, so many servers behind one address
+are fine; the API is only asked when there is a new release.
 
 ## Why players left
 

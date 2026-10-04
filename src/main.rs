@@ -447,6 +447,13 @@ fn run() -> i32 {
     let mut staged: Option<(update::LinuxRelease, PathBuf)> = None;
     let mut install_now = false;
     let mut restarting = false;
+    // An empty server looks for an update soon after the last player left, then every few minutes.
+    let mut empty_since: Option<Instant> = None;
+    let mut quick_check: Option<Receiver<Result<bool, String>>> = None;
+    let mut last_quick_check = Instant::now();
+    let empty_delay = Duration::from_secs(10);
+    let empty_interval = Duration::from_secs(5 * 60);
+    let quick_spacing = Duration::from_secs(60);
     let start_check = || {
         let (sender, receiver) = channel();
         std::thread::spawn(move || {
@@ -520,6 +527,40 @@ fn run() -> i32 {
                     update_check = None;
                 }
                 Err(TryRecvError::Disconnected) => update_check = None,
+                Err(TryRecvError::Empty) => {}
+            }
+        }
+        if auto_update {
+            if host.connected() > 0 {
+                empty_since = None;
+            } else {
+                let since = *empty_since.get_or_insert(now);
+                // Ten seconds empty (not a rejoin or a map change), a minute since the last look,
+                // and then every five minutes while it stays empty.
+                let due = now.duration_since(since) >= empty_delay
+                    && now.duration_since(last_quick_check) >= quick_spacing
+                    && (now.duration_since(since) < empty_delay + quick_spacing || now.duration_since(last_quick_check) >= empty_interval);
+                if due && quick_check.is_none() && update_check.is_none() && staging.is_none() && staged.is_none() {
+                    last_quick_check = now;
+                    let (sender, receiver) = channel();
+                    std::thread::spawn(move || {
+                        let _ = sender.send(update::quick_check());
+                    });
+                    quick_check = Some(receiver);
+                }
+            }
+        }
+        if let Some(receiver) = &quick_check {
+            match receiver.try_recv() {
+                // A newer release: the full check reads its checksum, then it is staged and
+                // installed below, since the server is empty.
+                Ok(Ok(true)) => {
+                    if update_check.is_none() {
+                        update_check = Some(start_check());
+                    }
+                    quick_check = None;
+                }
+                Ok(_) | Err(TryRecvError::Disconnected) => quick_check = None,
                 Err(TryRecvError::Empty) => {}
             }
         }

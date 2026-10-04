@@ -64,7 +64,7 @@ Everything the Windows dedicated server does, plus a few things it doesn't:
 - Custom maps from a `Mods/` folder
 - Clean shutdown on `quit`, Ctrl+C, SIGTERM and SIGHUP (signs out of Steam first)
 - **Lua plugins**: custom `/commands`, automatic messages, timers and events ([docs](docs/plugins.md))
-- **Self-updating**: installs new releases on its own once the server is empty, after checking
+- **Self-updating**: installs new releases on its own seconds after the server is empty, after checking
   the download and test-starting it ([docs](docs/installation.md#updates))
 - Rejoining players replace their old connection instead of being turned away
 - Daily log files, two weeks kept
