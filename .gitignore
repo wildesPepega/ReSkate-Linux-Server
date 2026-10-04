@@ -4,3 +4,4 @@ ReSkateServer.json
 ReSkateServer.log
 Mods/
 /plugins/
+launch-claude*.sh
