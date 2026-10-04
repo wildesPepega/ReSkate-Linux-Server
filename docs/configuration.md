@@ -13,6 +13,10 @@ the console or by an admin in game is saved back to this file.
   "auto_update": true,
   "bans": [],
   "boosts": true,
+  "discord": {
+    "events": ["start", "stop", "update", "join", "leave", "throwdown", "vote", "anticheat", "admin"],
+    "webhook": ""
+  },
   "distances": {
     "full_rate_return": 50,
     "half_rate_return": 150,
@@ -36,8 +40,6 @@ the console or by an admin in game is saved back to this file.
   "parties": true,
   "party_size": 8,
   "password": "",
-  "port": 27015,
-  "query_port": 27016,
   "score_allow": [],
   "score_check": "warn",
   "speed_check": "warn",
@@ -69,7 +71,6 @@ the console or by an admin in game is saved back to this file.
 | `welcome` | `""` | A chat line sent to each player as they join. |
 | `listed` | `true` | `false` hides the server from the browser; players then need the code. |
 | `auto_update` | `true` | Install new Linux builds on their own once the server is empty (see [installation.md](installation.md#updates)). |
-| `port`, `query_port` | `27015`, `27016` | Steam game server ports. `--port` / `--query-port` override them. |
 | `admins` | `[]` | SteamID64s **as strings** who may change settings in game, e.g. `["76561198000000000"]`. |
 | `bans` | `[]` | Players who can never join. Managed with `ban` / `unban`. |
 
@@ -141,3 +142,50 @@ Players vote with `/yes` and `/no` in chat.
 |---|---|---|
 | `world_layer_sync` | `false` | Force the `layers` below on every player. Needs `world-layers.json` next to the server. |
 | `layers` | `{}` | World layer key → `"on"` / `"off"`. Usually set with the `tod` and `layer` commands. |
+
+### Discord
+
+Sends console events to a Discord channel through a
+[webhook](https://support.discord.com/hc/en-us/articles/228383668) (channel settings →
+Integrations → Webhooks → New Webhook → Copy Webhook URL).
+
+```json
+"discord": {
+  "webhook": "https://discord.com/api/webhooks/123456789/abcdef...",
+  "events": ["start", "stop", "update", "join", "leave", "throwdown", "vote", "anticheat", "admin"]
+}
+```
+
+| Key | |
+|---|---|
+| `webhook` | The webhook URL; empty turns Discord off. Read at startup: restart after changing it. Keep it secret, anyone with it can post to the channel. |
+| `events` | What to send, from the list below, or `["all"]`. |
+
+| Event | Console lines |
+|---|---|
+| `start` | the server is up (`… is up on <map> for N players.`) |
+| `stop` | shutting down, restarting for an update |
+| `update` | a new release found, downloaded, installed; a new ReSkate version without a Linux build yet |
+| `join` | a player joined |
+| `leave` | a player left, with the reason |
+| `throwdown` | throwdown drops placed and removed, players joining, leads, results |
+| `vote` | votes started, passed, failed, cancelled |
+| `anticheat` | speed check and score check findings |
+| `admin` | commands admins ran in game |
+| `command` | `/` commands players typed |
+| `chat` | chat messages |
+| `party` | party invites, joins and party chat |
+| `objects` | objects placed and removed |
+| `map` | players finished loading a map |
+| `plugins` | plugin messages and errors |
+| `server` | everything else (console answers, startup details, errors) |
+
+Lines are collected for about a second and sent together, so busy servers stay under Discord's rate
+limit. Each line gets an emoji for its event and the time. The webhook posts under the server's
+name. Mentions in player text (`@everyone`, user pings) and link previews are suppressed.
+
+Console: `discord` shows what is sent, `discord test` posts a test message.
+
+Changed from older versions: `port` and `query_port` are no longer settings. The server takes the
+ports from `--port` and `--query-port` (a hosting panel's allocations), default 27015 and 27016,
+and removes the old keys from the file.

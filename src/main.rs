@@ -8,6 +8,7 @@
 mod activity;
 mod buffers;
 mod config;
+mod discord;
 mod host;
 mod objects;
 mod party;
@@ -128,6 +129,12 @@ fn open_log(folder: &Path) {
 }
 
 fn write_log(text: &str) {
+    let time = write_local(text);
+    discord::post(text, &time);
+}
+
+// The console and the log file; returns the time stamp used.
+fn write_local(text: &str) -> String {
     let mut log = LOG.lock().unwrap_or_else(|e| e.into_inner());
     let (date, time) = stamp();
     // One write per line, flushed at once, so a hosting panel reading the pipe sees it now.
@@ -144,6 +151,7 @@ fn write_log(text: &str) {
             let _ = file.flush();
         }
     }
+    time
 }
 
 extern "C" fn on_signal(_: libc::c_int) {
@@ -349,6 +357,18 @@ fn run() -> i32 {
         write_log(&format!("Config problem: {error}"));
         return 1;
     }
+    if !config.dropped.is_empty() {
+        write_log(&format!(
+            "Removed {} from {file_name}: the ports come from --port and --query-port (default 27015 and 27016).",
+            config.dropped.join(", ")
+        ));
+    }
+    if !config.discord_webhook.is_empty() {
+        match discord::start(&config.discord_webhook, &config.discord_events, &config.name, write_log) {
+            Ok(summary) => write_log(&summary),
+            Err(e) => write_log(&format!("Discord is off: {e}.")),
+        }
+    }
     // Release checks: at startup, then every half hour. --no-update or "auto_update": false turns them off.
     let auto_update = config.auto_update && !options.no_update;
     let mut announced_version = String::new();
@@ -361,6 +381,7 @@ fn run() -> i32 {
             match update::stage(release, &here).and_then(|package| update::install(&package, &here)) {
                 Ok(()) => {
                     write_log(&format!("Installed {}; restarting.", release.version));
+                    discord::flush(Duration::from_secs(5));
                     return RESTART;
                 }
                 Err(e) => write_log(&format!("The update failed: {e}. Starting {} instead.", update::VERSION)),
@@ -489,6 +510,14 @@ fn run() -> i32 {
                 }
                 continue;
             }
+            if line == "discord" || line == "discord test" {
+                if line == "discord test" && !discord::test(&format!("Test message from {}.", host.config.name)) {
+                    write_log("Discord is off: set discord.webhook in the config and restart.");
+                } else {
+                    write_log(&discord::status());
+                }
+                continue;
+            }
             match catch_unwind(AssertUnwindSafe(|| host.command(&line, 0))) {
                 Ok(answer) => write_log(&answer),
                 Err(p) => write_log(&format!("Command failed: {}", panic_text(p))),
@@ -598,6 +627,7 @@ fn run() -> i32 {
         }
         if now >= next_advertise {
             next_advertise = now + Duration::from_secs(2);
+            discord::set_name(&host.config.name);
             // A name with a bad word in it is never listed (clients hide one too); the server
             // still runs and players can join with its code.
             let allowed = !words::contains_bad_words(&host.config.name);
@@ -636,6 +666,7 @@ fn run() -> i32 {
     // The networking closes before Steam itself shuts down.
     drop(host);
     steam.stop();
+    discord::flush(Duration::from_secs(5));
     if restarting {
         RESTART
     } else {

@@ -61,8 +61,8 @@ ReSkateServer [--config <file>] [--port <port>] [--query-port <port>] [--no-upda
 
 | Option | Effect |
 |---|---|
-| `--port <port>` | game port, overrides `port` from the config |
-| `--query-port <port>` | query port, overrides `query_port` |
+| `--port <port>` | game port (default 27015) |
+| `--query-port <port>` | query port (default 27016) |
 | `--config <file>` | use another config file (default `ReSkateServer.json` next to the binary) |
 | `--no-update` | do not check for new ReSkate releases |
 | `--help` | print usage |
@@ -77,8 +77,8 @@ Type `quit`, press Ctrl+C or send SIGTERM / SIGHUP. The server signs out of Stea
 
 | Port | Default | Protocol | Purpose |
 |---|---|---|---|
-| `port` | 27015 | UDP | Steam game server port |
-| `query_port` | 27016 | UDP | Steam server queries (ping in the browser) |
+| `--port` | 27015 | UDP | Steam game server port |
+| `--query-port` | 27016 | UDP | Steam server queries (ping in the browser) |
 
 Opening them is optional: players connect through Steam's relay network. With open ports the browser
 shows the ping and joins are a little faster.

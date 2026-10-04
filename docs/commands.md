@@ -24,6 +24,7 @@
 | `admin add\|remove <player or id>` | Manage admins (console only). |
 | `admins` | List admins. |
 | `version` | The server's version. |
+| `discord [test]` | What goes to the Discord webhook, or post a test message (console only, see [configuration](configuration.md#discord)). |
 | `update` | Check for a new release and install it straight away; players are told to rejoin (console only). |
 | `plugins [reload]` | List the loaded plugins, or reload them from disk (see [plugins.md](plugins.md)). |
 | `quit` (also `exit`, `stop`) | Shut down cleanly. |

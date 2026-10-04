@@ -12,6 +12,8 @@ config fields and console messages. The differences are:
 | Steam libraries | `steam_api64.dll`, `steamclient64.dll`, `tier0_s64.dll`, `vstdlib_s64.dll` | `libsteam_api.so` (shipped) + `steamclient.so` (from SteamCMD) |
 | Packet limit | A player over the per-second packet limit is dropped at once | Dropped only after 4 seconds over the limit in a row, so the burst of queued packets after a network hiccup no longer kicks everyone |
 | Gameplay timeout | A player whose game sends nothing for 10 s is dropped | 30 s: games freeze for longer while loading a newly placed throwdown drop (Spot Battles especially), which dropped several players at once |
+| Discord | – | Console events to a Discord webhook ([configuration.md](configuration.md#discord)) |
+| Ports | `port` and `query_port` in `ReSkateServer.json` | Only `--port` / `--query-port` (the panel's allocations); the old keys are removed from the file |
 | Plugins | – | Lua plugins for custom commands, automatic messages, timers and events ([plugins.md](plugins.md)) |
 | Shutdown | Closing the window | `quit`, Ctrl+C, SIGTERM, SIGHUP – all sign out of Steam first |
 

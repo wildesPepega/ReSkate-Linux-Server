@@ -27,7 +27,7 @@ tpall [player] | tphere <player> | votes [map|kick|tod on|off|<percent>] | vote-
 park <lot> <layout> | layer-sync on|off | layer <key> default|on|off | tod <time|default>\n\
 activity-log on|off | announce-throwdowns on|off | parties [on|off] | party-size <2-8> | speed-check off|warn|kick\n\
 score-check [off|warn|kick] | score-allow [<fingerprint>|remove <fingerprint>]\n\
-admin add|remove <SteamID64> | admins | plugins [reload] | version | update | quit";
+admin add|remove <SteamID64> | admins | plugins [reload] | discord [test] | version | update | quit";
 
 // How long a connected player's game may send nothing before it is dropped. The C++ server uses
 // 10 s, but games freeze for longer while loading what a new throwdown drop needs (Spot Battles

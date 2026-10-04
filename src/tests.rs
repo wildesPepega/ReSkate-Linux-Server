@@ -410,7 +410,20 @@ fn config_file_round_trip_and_maps() {
     assert_eq!(back.admins, vec![PLAYER]);
     assert!(back.votes.map.enabled);
     let bad = ServerConfig { port: 5, query_port: 5, ..back.clone() };
-    assert_eq!(config_error(&bad), "port and query_port must differ.");
+    assert_eq!(config_error(&bad), "--port and --query-port must differ.");
+    // Ports in an older file are dropped from it, and reported.
+    let mut value: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&file).unwrap()).unwrap();
+    assert!(value.get("port").is_none() && value["discord"]["webhook"] == "");
+    value.as_object_mut().unwrap().insert("port".into(), 25570.into());
+    value.as_object_mut().unwrap().insert("query_port".into(), 25571.into());
+    value["discord"]["events"] = serde_json::json!(["join", "Leave"]);
+    std::fs::write(&file, value.to_string()).unwrap();
+    let back = load_config(&file, &mut added).unwrap();
+    assert_eq!(back.dropped, vec!["port = 25570".to_string(), "query_port = 25571".to_string()]);
+    assert_eq!((back.port, back.query_port), (27015, 27016));
+    assert_eq!(back.discord_events, vec!["join".to_string(), "leave".to_string()]);
+    let text = std::fs::read_to_string(&file).unwrap();
+    assert!(!text.contains("\"port\"") && !text.contains("query_port"));
     let _ = std::fs::remove_dir_all(&folder);
 }
 
@@ -673,4 +686,84 @@ fn latest_release_tag_comes_from_the_redirect() {
 #[ignore]
 fn quick_check_reaches_github() {
     assert!(crate::update::quick_check().is_ok());
+}
+
+#[test]
+fn console_lines_get_discord_categories() {
+    use crate::discord::category;
+    for (line, expected) in [
+        ("pepZ.sh joined (76561198167564279, admin), 3/128 players, loaded in 7 s", "join"),
+        ("oca left (Disconnected: Steam 1000, closed by the player's game, closed by player.)", "leave"),
+        ("[EU]nein.live | Skate 3 is up on FullSkate3Map for 32 players.", "start"),
+        ("Shutting down.", "stop"),
+        ("Restarting for the update.", "stop"),
+        ("ReSkate Linux Server 1.0.8-2 is available (this is 1.0.8-1); downloading it.", "update"),
+        ("Installed ReSkate Linux Server 1.0.8-2; restarting.", "update"),
+        ("ReSkate 1.0.9 is out; this Linux server is 1.0.8-3. It updates itself once a Linux build of it is released.", "update"),
+        ("[throwdown] Sinful placed a Spot Battle drop near (265, 273, -521)", "throwdown"),
+        ("[anticheat] mason418's game is running at 1.18x speed (a speed hack?).", "anticheat"),
+        ("[chat] Bob: someone joined (76561198000000000), 1/2 players", "chat"),
+        ("[party chat] Bob: hi", "party"),
+        ("[command] consonant: /party invite a", "command"),
+        ("[admin] pepZ.sh: kick Bob", "admin"),
+        ("[vote] Bob started a vote to change the map.", "vote"),
+        ("Everyone has loaded San Vansterdam.", "map"),
+        ("[objects] Bob placed own_bkramps_generic_kickercurvedlarge_00001 at (-1264, 936, -877)", "objects"),
+        ("[greeter] 4 players online", "plugins"),
+        ("[plugins] 2 loaded: info (/discord)", "plugins"),
+        ("World layers: 262 from world-layers.json.", "server"),
+        ("ReSkate Linux Server 1.0.8-3", "server"),
+    ] {
+        assert_eq!(category(line), expected, "{line}");
+    }
+    assert!(crate::discord::valid_webhook("https://discord.com/api/webhooks/123/abc"));
+    assert!(!crate::discord::valid_webhook("https://example.com/api/webhooks/123/abc"));
+    assert!(!crate::discord::valid_webhook("http://discord.com/api/webhooks/123/abc"));
+}
+
+#[test]
+fn discord_lines_reach_the_webhook_in_batches() {
+    use std::io::{BufRead, BufReader, Read, Write};
+    use std::net::TcpListener;
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let url = format!("http://{}/api/webhooks/1/token", listener.local_addr().unwrap());
+    let (sender, bodies) = std::sync::mpsc::channel::<String>();
+    std::thread::spawn(move || {
+        for stream in listener.incoming() {
+            let mut stream = stream.unwrap();
+            let mut reader = BufReader::new(stream.try_clone().unwrap());
+            let mut length = 0;
+            loop {
+                let mut header = String::new();
+                reader.read_line(&mut header).unwrap();
+                if header == "\r\n" || header.is_empty() {
+                    break;
+                }
+                if let Some(value) = header.to_lowercase().strip_prefix("content-length:") {
+                    length = value.trim().parse().unwrap();
+                }
+            }
+            let mut body = vec![0; length];
+            reader.read_exact(&mut body).unwrap();
+            sender.send(String::from_utf8(body).unwrap()).unwrap();
+            stream.write_all(b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: close\r\n\r\n").unwrap();
+        }
+    });
+    fn quiet(_: &str) {}
+    let events = vec!["join".to_string(), "leave".to_string(), "stop".to_string()];
+    let summary = crate::discord::start_checked(&url, &events, "Test *Server*", quiet, false).unwrap();
+    assert!(summary.contains("join, leave, stop"));
+    crate::discord::post("Bob_1 joined (76561198000000001), 1/16 players", "10:00:00");
+    crate::discord::post("[chat] Bob_1: @everyone look", "10:00:01"); // not chosen
+    crate::discord::post("Bob_1 left (Disconnected.)", "10:00:02");
+    crate::discord::post("Shutting down.", "10:00:03");
+    crate::discord::flush(std::time::Duration::from_secs(5));
+    let body: serde_json::Value = serde_json::from_str(&bodies.recv_timeout(std::time::Duration::from_secs(5)).unwrap()).unwrap();
+    let content = body["content"].as_str().unwrap();
+    assert_eq!(body["username"], "Test *Server*");
+    assert_eq!(body["allowed_mentions"]["parse"], serde_json::json!([]));
+    assert_eq!(content.lines().count(), 3, "{content}");
+    assert!(content.starts_with("🟢 `10:00:00` Bob\\_1 joined (76561198000000001), 1/16 players\n"), "{content}");
+    assert!(content.contains("🔴 `10:00:02` Bob\\_1 left (Disconnected.)") && content.contains("⛔ `10:00:03` Shutting down."));
+    assert!(!content.contains("everyone"));
 }

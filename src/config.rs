@@ -51,6 +51,7 @@ pub struct ServerConfig {
     pub speed_check: String,
     pub score_check: String,
     pub score_allow: Vec<u64>,
+    // From --port / --query-port (a hosting panel's allocations), not from the file.
     pub port: u16,
     pub query_port: u16,
     pub tps: u32,
@@ -68,7 +69,14 @@ pub struct ServerConfig {
     pub layers: BTreeMap<String, String>,
     pub admins: Vec<u64>,
     pub bans: Vec<Ban>,
+    pub discord_webhook: String,
+    pub discord_events: Vec<String>,
+    // Settings an older file had that are no longer read, as "key = value", for the log.
+    pub dropped: Vec<String>,
 }
+
+// What a new config sends to a Discord webhook (docs/configuration.md#discord).
+pub const DEFAULT_DISCORD_EVENTS: &[&str] = &["start", "stop", "update", "join", "leave", "throwdown", "vote", "anticheat", "admin"];
 
 impl Default for ServerConfig {
     fn default() -> Self {
@@ -105,6 +113,9 @@ impl Default for ServerConfig {
             layers: BTreeMap::new(),
             admins: Vec::new(),
             bans: Vec::new(),
+            discord_webhook: String::new(),
+            discord_events: DEFAULT_DISCORD_EVENTS.iter().map(|e| e.to_string()).collect(),
+            dropped: Vec::new(),
         }
     }
 }
@@ -133,8 +144,6 @@ fn to_json(c: &ServerConfig) -> Value {
     root.insert("speed_check".into(), c.speed_check.clone().into());
     root.insert("score_check".into(), c.score_check.clone().into());
     root.insert("score_allow".into(), Value::Array(c.score_allow.iter().map(|&f| scoring_text(f).into()).collect()));
-    root.insert("port".into(), u32::from(c.port).into());
-    root.insert("query_port".into(), u32::from(c.query_port).into());
     root.insert("tps".into(), c.tps.into());
     root.insert("voice_chat".into(), c.voice_chat.into());
     root.insert("voice_range".into(), f64::from(c.voice_range).into());
@@ -187,6 +196,10 @@ fn to_json(c: &ServerConfig) -> Value {
         })
         .collect();
     root.insert("bans".into(), Value::Array(bans));
+    let mut discord = Map::new();
+    discord.insert("webhook".into(), c.discord_webhook.clone().into());
+    discord.insert("events".into(), Value::Array(c.discord_events.iter().map(|e| e.clone().into()).collect()));
+    root.insert("discord".into(), Value::Object(discord));
     Value::Object(root)
 }
 
@@ -305,8 +318,19 @@ pub fn load_config(file: &Path, added: &mut Vec<String>) -> Result<ServerConfig,
             }
         }
     }
-    c.port = read_u32(&root, "port", u32::from(c.port))? as u16;
-    c.query_port = read_u32(&root, "query_port", u32::from(c.query_port))? as u16;
+    // The ports come from --port / --query-port now; older files had them.
+    for key in ["port", "query_port"] {
+        if let Some(value) = root.get(key) {
+            c.dropped.push(format!("{key} = {value}"));
+        }
+    }
+    if let Some(discord) = root.get("discord").filter(|d| d.is_object()) {
+        c.discord_webhook = read_string(discord, "webhook", "")?.trim().to_string();
+        if let Some(events) = discord.get("events") {
+            let list = events.as_array().ok_or("\"discord.events\" must be a list")?;
+            c.discord_events = list.iter().filter_map(|e| e.as_str()).map(|e| e.trim().to_lowercase()).collect();
+        }
+    }
     c.tps = read_u32(&root, "tps", c.tps)?;
     c.voice_chat = read_bool(&root, "voice_chat", c.voice_chat)?;
     if let Some(v) = root.get("voice_range") {
@@ -380,7 +404,7 @@ pub fn load_config(file: &Path, added: &mut Vec<String>) -> Result<ServerConfig,
     // A config from an older version: write the new settings into it so owners can see them.
     let mut missing = Vec::new();
     missing_settings(&root, &to_json(&c), "", &mut missing);
-    if !missing.is_empty() {
+    if !missing.is_empty() || !c.dropped.is_empty() {
         save_config(&c)?;
         *added = missing;
     }
@@ -449,7 +473,7 @@ pub fn config_error(c: &ServerConfig) -> String {
         }
     }
     if c.port == 0 || c.query_port == 0 || c.port == c.query_port {
-        return "port and query_port must differ.".into();
+        return "--port and --query-port must differ.".into();
     }
     if c.admins.iter().any(|&id| !individual_steam_id(id)) {
         return "admins must be SteamID64s (17 digits starting 7656119).".into();
