@@ -1,6 +1,6 @@
 // Console lines to a Discord webhook (docs/configuration.md#discord). Each line gets a category
-// from its shape; the chosen categories are sent, several lines per message, from a thread of
-// their own so the server never waits for Discord.
+// from its shape; the chosen categories are sent, several lines per message (as embeds or as
+// plain text), from a thread of their own so the server never waits for Discord.
 use serde_json::{json, Value};
 use std::sync::mpsc::{channel, Receiver, RecvTimeoutError, Sender};
 use std::sync::Mutex;
@@ -16,12 +16,39 @@ const WEBHOOK_PREFIXES: &[&str] = &[
     "https://ptb.discord.com/api/webhooks/",
     "https://canary.discord.com/api/webhooks/",
 ];
-// Lines collected for at most this long, or until a message is nearly full (2000 characters).
+// Lines collected for at most this long, or until a message is full: 2000 characters of text,
+// or 10 embeds and 6000 characters in all.
 const BATCH: Duration = Duration::from_millis(1500);
 const MESSAGE_LIMIT: usize = 1900;
+const EMBEDS_PER_MESSAGE: usize = 10;
+const EMBED_CHARACTERS: usize = 5500;
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum Style {
+    Embed,
+    Text,
+}
+
+impl Style {
+    pub fn parse(text: &str) -> Option<Style> {
+        match text {
+            "embed" => Some(Style::Embed),
+            "text" => Some(Style::Text),
+            _ => None,
+        }
+    }
+}
+
+// One console line on its way to Discord.
+struct Entry {
+    category: &'static str,
+    text: String,
+    time: String,  // local, as the console shows it
+    unix: u64,     // for the embed's time stamp
+}
 
 enum Message {
-    Line(String),
+    Line(Entry),
     Name(String),
     Flush(Sender<()>),
 }
@@ -94,6 +121,50 @@ pub fn category(text: &str) -> &'static str {
     "server"
 }
 
+// Title and side colour of a category's embeds.
+fn embed_style(category: &str) -> (&'static str, u32) {
+    match category {
+        "start" => ("Server started", 0x57F287),
+        "stop" => ("Server stopped", 0xED4245),
+        "update" => ("Update", 0x5865F2),
+        "join" => ("Player joined", 0x57F287),
+        "leave" => ("Player left", 0xED4245),
+        "chat" => ("Chat", 0x00B0F4),
+        "party" => ("Party", 0x00B0F4),
+        "command" => ("Command", 0x95A5A6),
+        "admin" => ("Admin", 0xE67E22),
+        "anticheat" => ("Anticheat", 0xFEE75C),
+        "throwdown" => ("Throwdown", 0xF39C12),
+        "objects" => ("Objects", 0x99AAB5),
+        "vote" => ("Vote", 0x9B59B6),
+        "map" => ("Map", 0x1ABC9C),
+        "plugins" => ("Plugin", 0xEB459E),
+        "test" => ("Test", 0x5865F2),
+        _ => ("Server", 0x99AAB5),
+    }
+}
+
+// 2026-10-04T09:41:09Z, the form Discord takes for an embed's time stamp.
+pub(crate) fn iso8601(unix: u64) -> String {
+    let days = (unix / 86_400) as i64;
+    let seconds = unix % 86_400;
+    // Days since 1970-01-01 to a civil date (Howard Hinnant's algorithm).
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = yoe + era * 400 + i64::from(month <= 2);
+    format!("{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}Z", seconds / 3600, seconds / 60 % 60, seconds % 60)
+}
+
+fn unix_now() -> u64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
+}
+
 fn emoji(category: &str) -> &'static str {
     match category {
         "start" => "✅",
@@ -111,6 +182,7 @@ fn emoji(category: &str) -> &'static str {
         "vote" => "🗳️",
         "map" => "🗺️",
         "plugins" => "🧩",
+        "test" => "🧪",
         _ => "ℹ️",
     }
 }
@@ -131,15 +203,16 @@ pub fn valid_webhook(url: &str) -> bool {
     WEBHOOK_PREFIXES.iter().any(|p| url.starts_with(p)) && url.len() < 512 && !url.contains(char::is_whitespace)
 }
 
-// Starts sending. `events` are category names, or "all".
-pub fn start(webhook: &str, events: &[String], name: &str, log: fn(&str)) -> Result<String, String> {
-    start_checked(webhook, events, name, log, true)
+// Starts sending. `events` are category names, or "all"; `style` is "embed" or "text".
+pub fn start(webhook: &str, events: &[String], style: &str, name: &str, log: fn(&str)) -> Result<String, String> {
+    start_checked(webhook, events, style, name, log, true)
 }
 
-pub(crate) fn start_checked(webhook: &str, events: &[String], name: &str, log: fn(&str), check: bool) -> Result<String, String> {
+pub(crate) fn start_checked(webhook: &str, events: &[String], style: &str, name: &str, log: fn(&str), check: bool) -> Result<String, String> {
     if check && !valid_webhook(webhook) {
         return Err("discord.webhook is not a Discord webhook URL (https://discord.com/api/webhooks/...)".into());
     }
+    let style = Style::parse(style).ok_or_else(|| format!("discord.style must be \"embed\" or \"text\", not \"{style}\""))?;
     let mut chosen: Vec<&'static str> = Vec::new();
     for event in events {
         if event == "all" {
@@ -154,7 +227,7 @@ pub(crate) fn start_checked(webhook: &str, events: &[String], name: &str, log: f
     let (sender, receiver) = channel();
     let url = webhook.to_string();
     let username = name.to_string();
-    std::thread::spawn(move || run(url, username, receiver, log));
+    std::thread::spawn(move || run(url, username, style, receiver, log));
     let summary = format!("Discord: sending {} to the webhook.", if chosen.is_empty() { "nothing".into() } else { chosen.join(", ") });
     *DISCORD.lock().unwrap_or_else(|e| e.into_inner()) = Some(Discord { sender, events: chosen, name: name.to_string() });
     Ok(summary)
@@ -166,8 +239,8 @@ pub fn post(text: &str, time: &str) {
     let Some(discord) = discord.as_ref() else { return };
     let category = category(text);
     if discord.events.contains(&category) {
-        let line = format!("{} `{time}` {}", emoji(category), escape(text));
-        let _ = discord.sender.send(Message::Line(line));
+        let entry = Entry { category, text: text.to_string(), time: time.to_string(), unix: unix_now() };
+        let _ = discord.sender.send(Message::Line(entry));
     }
 }
 
@@ -202,16 +275,63 @@ pub fn status() -> String {
 pub fn test(text: &str) -> bool {
     let discord = DISCORD.lock().unwrap_or_else(|e| e.into_inner());
     let Some(discord) = discord.as_ref() else { return false };
-    discord.sender.send(Message::Line(format!("🧪 {}", escape(text)))).is_ok()
+    let time = crate::stamp().1;
+    discord.sender.send(Message::Line(Entry { category: "test", text: text.to_string(), time, unix: unix_now() })).is_ok()
 }
 
-fn send(agent: &ureq::Agent, url: &str, username: &str, content: &str) -> Result<(), (String, Option<Duration>)> {
-    let body: Value = json!({
+fn text_line(entry: &Entry) -> String {
+    let line = format!("{} `{}` {}", emoji(entry.category), entry.time, escape(&entry.text));
+    line.chars().take(MESSAGE_LIMIT).collect()
+}
+
+fn embed(entry: &Entry, server: &str) -> Value {
+    let (title, colour) = embed_style(entry.category);
+    let description: String = escape(&entry.text).chars().take(4000).collect();
+    json!({
+        "title": format!("{} {title}", emoji(entry.category)),
+        "description": description,
+        "color": colour,
+        "timestamp": iso8601(entry.unix),
+        "footer": { "text": server.chars().take(200).collect::<String>() },
+    })
+}
+
+// How many of `pending` fit in one message.
+fn batch_size(pending: &[Entry], style: Style) -> usize {
+    let mut used = 0;
+    let mut size = 0;
+    for entry in pending {
+        let length = match style {
+            Style::Text => text_line(entry).len() + 1,
+            Style::Embed => entry.text.len().min(4000) + 64,
+        };
+        let full = match style {
+            Style::Text => size + length > MESSAGE_LIMIT,
+            Style::Embed => used == EMBEDS_PER_MESSAGE || size + length > EMBED_CHARACTERS,
+        };
+        if used > 0 && full {
+            break;
+        }
+        used += 1;
+        size += length;
+    }
+    used
+}
+
+fn payload(entries: &[Entry], style: Style, username: &str) -> Value {
+    let mut body = json!({
         "username": username.chars().take(80).collect::<String>(),
-        "content": content,
         "allowed_mentions": { "parse": [] }, // no @everyone or pings from player text
         "flags": 4,                            // no link previews for URLs in chat
     });
+    match style {
+        Style::Text => body["content"] = entries.iter().map(text_line).collect::<Vec<_>>().join("\n").into(),
+        Style::Embed => body["embeds"] = entries.iter().map(|e| embed(e, username)).collect::<Vec<_>>().into(),
+    }
+    body
+}
+
+fn send(agent: &ureq::Agent, url: &str, body: &Value) -> Result<(), (String, Option<Duration>)> {
     match agent.post(url).set("Content-Type", "application/json").send_string(&body.to_string()) {
         Ok(_) => Ok(()),
         Err(ureq::Error::Status(429, response)) => {
@@ -223,15 +343,15 @@ fn send(agent: &ureq::Agent, url: &str, username: &str, content: &str) -> Result
     }
 }
 
-fn run(url: String, mut username: String, receiver: Receiver<Message>, log: fn(&str)) {
+fn run(url: String, mut username: String, style: Style, receiver: Receiver<Message>, log: fn(&str)) {
     let agent = ureq::AgentBuilder::new().timeout(Duration::from_secs(10)).user_agent("ReSkateServer (Linux)").build();
-    let mut pending: Vec<String> = Vec::new();
+    let mut pending: Vec<Entry> = Vec::new();
     let mut flushes: Vec<Sender<()>> = Vec::new();
     let mut failures = 0u32;
     loop {
         // Wait for a line, then gather more for a moment.
         let first = if pending.is_empty() && flushes.is_empty() { receiver.recv().ok() } else { None };
-        let mut take = |message: Message, pending: &mut Vec<String>, flushes: &mut Vec<Sender<()>>| match message {
+        let mut take = |message: Message, pending: &mut Vec<Entry>, flushes: &mut Vec<Sender<()>>| match message {
             Message::Line(line) => pending.push(line),
             Message::Name(name) => username = name,
             Message::Flush(done) => flushes.push(done),
@@ -242,7 +362,7 @@ fn run(url: String, mut username: String, receiver: Receiver<Message>, log: fn(&
             None => {}
         }
         let deadline = Instant::now() + BATCH;
-        while flushes.is_empty() && pending.iter().map(|l| l.len() + 1).sum::<usize>() < MESSAGE_LIMIT {
+        while flushes.is_empty() && batch_size(&pending, style) == pending.len() {
             let left = deadline.saturating_duration_since(Instant::now());
             match receiver.recv_timeout(left) {
                 Ok(message) => take(message, &mut pending, &mut flushes),
@@ -254,18 +374,8 @@ fn run(url: String, mut username: String, receiver: Receiver<Message>, log: fn(&
         }
         // As many lines as fit in one message; the rest go next round.
         while !pending.is_empty() {
-            let mut content = String::new();
-            let mut used = 0;
-            for line in &pending {
-                let line: String = line.chars().take(MESSAGE_LIMIT).collect();
-                if !content.is_empty() && content.len() + line.len() + 1 > MESSAGE_LIMIT {
-                    break;
-                }
-                content.push_str(&line);
-                content.push('\n');
-                used += 1;
-            }
-            match send(&agent, &url, &username, &content) {
+            let used = batch_size(&pending, style);
+            match send(&agent, &url, &payload(&pending[..used], style, &username)) {
                 Ok(()) => {
                     pending.drain(..used);
                     failures = 0;

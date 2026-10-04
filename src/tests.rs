@@ -751,7 +751,8 @@ fn discord_lines_reach_the_webhook_in_batches() {
     });
     fn quiet(_: &str) {}
     let events = vec!["join".to_string(), "leave".to_string(), "stop".to_string()];
-    let summary = crate::discord::start_checked(&url, &events, "Test *Server*", quiet, false).unwrap();
+    assert!(crate::discord::start_checked(&url, &events, "fancy", "x", quiet, false).unwrap_err().contains("style"));
+    let summary = crate::discord::start_checked(&url, &events, "embed", "Test *Server*", quiet, false).unwrap();
     assert!(summary.contains("join, leave, stop"));
     crate::discord::post("Bob_1 joined (76561198000000001), 1/16 players", "10:00:00");
     crate::discord::post("[chat] Bob_1: @everyone look", "10:00:01"); // not chosen
@@ -759,11 +760,23 @@ fn discord_lines_reach_the_webhook_in_batches() {
     crate::discord::post("Shutting down.", "10:00:03");
     crate::discord::flush(std::time::Duration::from_secs(5));
     let body: serde_json::Value = serde_json::from_str(&bodies.recv_timeout(std::time::Duration::from_secs(5)).unwrap()).unwrap();
-    let content = body["content"].as_str().unwrap();
     assert_eq!(body["username"], "Test *Server*");
     assert_eq!(body["allowed_mentions"]["parse"], serde_json::json!([]));
-    assert_eq!(content.lines().count(), 3, "{content}");
-    assert!(content.starts_with("🟢 `10:00:00` Bob\\_1 joined (76561198000000001), 1/16 players\n"), "{content}");
-    assert!(content.contains("🔴 `10:00:02` Bob\\_1 left (Disconnected.)") && content.contains("⛔ `10:00:03` Shutting down."));
-    assert!(!content.contains("everyone"));
+    let embeds = body["embeds"].as_array().unwrap();
+    assert_eq!(embeds.len(), 3, "{body}");
+    assert_eq!(embeds[0]["title"], "🟢 Player joined");
+    assert_eq!(embeds[0]["description"], "Bob\\_1 joined (76561198000000001), 1/16 players");
+    assert_eq!(embeds[0]["color"], 0x57F287);
+    assert_eq!(embeds[0]["footer"]["text"], "Test *Server*");
+    assert!(embeds[0]["timestamp"].as_str().unwrap().ends_with('Z'));
+    assert_eq!(embeds[1]["title"], "🔴 Player left");
+    assert_eq!(embeds[2]["title"], "⛔ Server stopped");
+    assert!(!body.to_string().contains("everyone"));
+}
+
+#[test]
+fn embed_time_stamps_are_iso_8601() {
+    assert_eq!(crate::discord::iso8601(0), "1970-01-01T00:00:00Z");
+    assert_eq!(crate::discord::iso8601(1_791_106_869), "2026-10-04T09:41:09Z");
+    assert_eq!(crate::discord::iso8601(951_782_400), "2000-02-29T00:00:00Z");
 }

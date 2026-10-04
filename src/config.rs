@@ -71,6 +71,7 @@ pub struct ServerConfig {
     pub bans: Vec<Ban>,
     pub discord_webhook: String,
     pub discord_events: Vec<String>,
+    pub discord_style: String,
     // Settings an older file had that are no longer read, as "key = value", for the log.
     pub dropped: Vec<String>,
 }
@@ -115,6 +116,7 @@ impl Default for ServerConfig {
             bans: Vec::new(),
             discord_webhook: String::new(),
             discord_events: DEFAULT_DISCORD_EVENTS.iter().map(|e| e.to_string()).collect(),
+            discord_style: "embed".into(),
             dropped: Vec::new(),
         }
     }
@@ -199,6 +201,7 @@ fn to_json(c: &ServerConfig) -> Value {
     let mut discord = Map::new();
     discord.insert("webhook".into(), c.discord_webhook.clone().into());
     discord.insert("events".into(), Value::Array(c.discord_events.iter().map(|e| e.clone().into()).collect()));
+    discord.insert("style".into(), c.discord_style.clone().into());
     root.insert("discord".into(), Value::Object(discord));
     Value::Object(root)
 }
@@ -326,6 +329,7 @@ pub fn load_config(file: &Path, added: &mut Vec<String>) -> Result<ServerConfig,
     }
     if let Some(discord) = root.get("discord").filter(|d| d.is_object()) {
         c.discord_webhook = read_string(discord, "webhook", "")?.trim().to_string();
+        c.discord_style = read_string(discord, "style", &c.discord_style)?.trim().to_lowercase();
         if let Some(events) = discord.get("events") {
             let list = events.as_array().ok_or("\"discord.events\" must be a list")?;
             c.discord_events = list.iter().filter_map(|e| e.as_str()).map(|e| e.trim().to_lowercase()).collect();
