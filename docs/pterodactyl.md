@@ -49,6 +49,12 @@ config, `Mods/` and logs are kept as long as the archive does not contain them.
   with console commands while it runs – they are saved to the file). See
   [configuration.md](configuration.md).
 
+## Plugins
+
+Create a `plugins/` folder in the file manager and upload `.lua` files into it (examples are in
+`examples/plugins/` after installation). Type `plugins reload` in the panel console to load
+changes without a restart. See [plugins.md](plugins.md). A reinstall does not touch `plugins/`.
+
 ## Custom maps
 
 Create a `Mods/` folder in the file manager and upload the map's mod folder into it (see

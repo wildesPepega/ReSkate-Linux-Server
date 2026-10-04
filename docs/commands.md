@@ -24,6 +24,7 @@
 | `admin add\|remove <player or id>` | Manage admins (console only). |
 | `admins` | List admins. |
 | `update` | Check for a new ReSkate release now. |
+| `plugins [reload]` | List the loaded plugins, or reload them from disk (see [plugins.md](plugins.md)). |
 | `quit` (also `exit`, `stop`) | Shut down cleanly. |
 | `help` | List commands. |
 
@@ -93,7 +94,7 @@
 
 ## Player chat commands
 
-Available to every player in chat:
+Available to every player in chat (plus any commands added by [plugins](plugins.md); `/help` lists them):
 
 | Command | |
 |---|---|

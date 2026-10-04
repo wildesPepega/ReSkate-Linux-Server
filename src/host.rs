@@ -9,6 +9,7 @@ use crate::config::{ServerConfig, VoteSetting};
 use crate::objects::{ObjectResult, ObjectState};
 use crate::party::{PartyBook, PartyResult};
 use crate::password::{password_key, password_proof, proof_matches, PasswordKey};
+use crate::plugins::{Action, PlayerInfo, PluginManager, Snapshot};
 use crate::protocol::*;
 use crate::speed::{SpeedCheck, LIMIT as SPEED_LIMIT};
 use crate::steam::SteamTransport;
@@ -26,7 +27,7 @@ tpall [player] | tphere <player> | votes [map|kick|tod on|off|<percent>] | vote-
 park <lot> <layout> | layer-sync on|off | layer <key> default|on|off | tod <time|default>\n\
 activity-log on|off | announce-throwdowns on|off | parties [on|off] | party-size <2-8> | speed-check off|warn|kick\n\
 score-check [off|warn|kick] | score-allow [<fingerprint>|remove <fingerprint>]\n\
-admin add|remove <SteamID64> | admins | update | quit";
+admin add|remove <SteamID64> | admins | plugins [reload] | update | quit";
 
 const TIMES: [&str; 8] = ["default", "morning", "noon", "afternoon", "evening", "night", "weatherday", "weathernight"];
 
@@ -253,6 +254,7 @@ pub struct Host {
     last_world_state: u64,
     next_object_update: u64,
     travel_started: u64,
+    plugins: PluginManager,
 }
 
 macro_rules! guest {
@@ -294,6 +296,7 @@ impl Host {
             last_world_state: 0,
             next_object_update: 0,
             travel_started: 0,
+            plugins: PluginManager::default(),
         }
     }
 
@@ -355,6 +358,45 @@ impl Host {
     }
     fn handshaken(&self, id: u64) -> bool {
         self.guests.get(&id).is_some_and(|g| g.handshaken)
+    }
+
+    // ---- Plugins ---------------------------------------------------------------------------
+    pub fn load_plugins(&mut self, dir: &std::path::Path) {
+        for line in self.plugins.load(dir, crate::now_us()) {
+            self.log(&line);
+        }
+    }
+    fn player_info(&self, id: u64) -> PlayerInfo {
+        PlayerInfo { id, name: self.name_of(id), admin: self.is_admin(id) }
+    }
+    fn plugin_snapshot(&self) -> Snapshot {
+        Snapshot {
+            players: self.guests.iter().filter(|(_, g)| g.handshaken).map(|(&id, _)| self.player_info(id)).collect(),
+            server: self.config.name.clone(),
+            map: self.map_name(),
+            max_players: self.config.max_players,
+        }
+    }
+    fn apply_plugin_actions(&mut self, actions: Vec<Action>) {
+        for action in actions {
+            match action {
+                Action::Broadcast(text) => {
+                    for line in text.split('\n').filter(|l| !trim(l).is_empty()).take(12) {
+                        self.send_chat(line, None);
+                    }
+                }
+                Action::Tell(id, text) => {
+                    if self.handshaken(id) {
+                        self.reply(id, &text);
+                    }
+                }
+                Action::Log(text) => self.log(&text),
+                Action::Run(plugin, line) => {
+                    let answer = self.command(&line, 0);
+                    self.log(&format!("[{plugin}] {}: {answer}", loggable(&line)));
+                }
+            }
+        }
     }
 
     pub fn invite(&self) -> String {
@@ -725,6 +767,9 @@ impl Host {
             self.log(&format!("{name} left ({reason})"));
             let guests = &self.guests;
             self.activity.left(id, &|player| current_name(guests, player));
+            let player = PlayerInfo { id, name: name.clone(), admin: self.is_admin(id) };
+            let actions = self.plugins.leave(self.plugin_snapshot(), &player, reason);
+            self.apply_plugin_actions(actions);
         }
         self.party_left(id, &name);
         self.vote_cooldowns.remove(&id);
@@ -948,6 +993,12 @@ impl Host {
                 return self.chat_command(peer, line);
             }
             self.log(&format!("[chat] {name}: {}", p.text));
+            let (snapshot, player) = (self.plugin_snapshot(), self.player_info(peer));
+            let (actions, allowed) = self.plugins.chat(snapshot, &player, &p.text);
+            self.apply_plugin_actions(actions);
+            if !allowed {
+                return self.log(&format!("[chat] (kept from the others by a plugin) {name}"));
+            }
             return self.broadcast(&p, true, false, p.source);
         }
         // Linked throwdowns: opaque to the server, relayed like chat to everyone else in the same world.
@@ -1119,6 +1170,9 @@ impl Host {
                 loaded
             );
             self.log(&text);
+            let (snapshot, player) = (self.plugin_snapshot(), self.player_info(peer));
+            let actions = self.plugins.join(snapshot, &player);
+            self.apply_plugin_actions(actions);
         }
     }
 
@@ -1343,6 +1397,11 @@ impl Host {
         if self.vote.as_ref().is_some_and(|v| now >= v.ends) {
             self.check_vote(true);
         }
+        if self.plugins.due(now) {
+            let snapshot = self.plugin_snapshot();
+            let actions = self.plugins.tick(now, snapshot);
+            self.apply_plugin_actions(actions);
+        }
     }
 
     // ---- Commands --------------------------------------------------------------------------
@@ -1396,6 +1455,17 @@ impl Host {
         let no_match = |argument: &str| format!("No single connected player matches \"{argument}\".");
         match name.as_str() {
             "" | "help" => HELP_TEXT.to_string(),
+            "plugins" => match lower(trim(argument)).as_str() {
+                "" => self.plugins.summary(),
+                "reload" => {
+                    let lines = self.plugins.reload();
+                    if admin != 0 {
+                        self.log(&format!("[admin] {} reloaded the plugins.", self.name_of(admin)));
+                    }
+                    lines.join("\n")
+                }
+                _ => "plugins [reload]".into(),
+            },
             "status" => format!(
                 "{} | {} | {}/{} players | {} TPS | voice {} ({} m) | password {} | code {}",
                 self.config.name,
@@ -2272,6 +2342,12 @@ impl Host {
     fn chat_command(&mut self, id: u64, line: &str) {
         let (first, rest) = split(line);
         let verb = lower(first);
+        if verb == "help" || verb == "?" {
+            let wanted = lower(trim(rest)).trim_start_matches('/').to_string();
+            if let Some(text) = self.plugins.describe(&wanted, self.is_admin(id)) {
+                return self.reply(id, &text);
+            }
+        }
         if verb.is_empty() || verb == "help" || verb == "?" {
             let mut text = String::new();
             let votes = self.enabled_votes();
@@ -2289,6 +2365,11 @@ impl Host {
             }
             if self.config.parties {
                 text += "/party: your party (invite, accept, leave...; /party help); /p <message>: party chat\n";
+            }
+            let plugin_help = self.plugins.help(self.is_admin(id));
+            if !plugin_help.is_empty() {
+                text += &plugin_help;
+                text += "\n";
             }
             if self.is_admin(id) {
                 text += "Admins: any server command as /<command>, e.g. /kick, /map, /tpall, /votes\n";
@@ -2332,6 +2413,14 @@ impl Host {
                 "This server has no player votes."
             };
             return self.reply(id, text);
+        }
+        let (snapshot, player) = (self.plugin_snapshot(), self.player_info(id));
+        if let Some((actions, reply)) = self.plugins.command(snapshot, &player, &verb, trim(rest)) {
+            self.apply_plugin_actions(actions);
+            if !reply.is_empty() && self.guests.contains_key(&id) {
+                self.reply(id, &reply);
+            }
+            return;
         }
         // Admins run any server command from chat, as they do with "mp server".
         if self.is_admin(id) {

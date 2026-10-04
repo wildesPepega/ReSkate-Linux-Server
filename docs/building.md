@@ -3,7 +3,7 @@
 ## Requirements
 
 - Rust 1.80 or newer (`rustup` recommended)
-- A C compiler (`gcc` or `clang`) – `zstd-safe` builds zstd from source
+- A C compiler (`gcc` or `clang`) – `zstd-safe` builds zstd and `mlua` builds Lua 5.4 from source
 - Linux x86_64
 
 ## Build
@@ -21,7 +21,8 @@ it at runtime.
 cargo test --release
 ```
 
-Covers the wire codec and compression, protocol messages, password proofs and game rules.
+Covers the wire codec and compression, protocol messages, password proofs, game rules and the
+plugin system (using the plugins in `examples/plugins/`).
 
 ## Package
 
@@ -68,6 +69,7 @@ logs, as the C++ server catches exceptions.
 | `password.rs` | Password proof (PBKDF2/HMAC-SHA256) |
 | `words.rs`, `bad_words.txt` | Chat word filter |
 | `text.rs` | Text helpers |
+| `plugins.rs` | Lua plugin system (sandbox, API, commands, timers, events) |
 | `update.rs` | GitHub release check |
 | `tests.rs` | Unit tests |
 

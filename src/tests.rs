@@ -441,3 +441,108 @@ fn receive_budget_survives_a_backlog_but_not_a_flood() {
     assert_eq!(dropped_at, Some(u64::from(RECEIVE_OVER_SECONDS) - 1));
     assert!(!ReceiveBudget::default().accept(0, 1, 0));
 }
+
+fn plugin_snapshot() -> crate::plugins::Snapshot {
+    use crate::plugins::{PlayerInfo, Snapshot};
+    Snapshot {
+        players: vec![
+            PlayerInfo { id: 76561198000000001, name: "Alice".into(), admin: true },
+            PlayerInfo { id: 76561198000000002, name: "Bob".into(), admin: false },
+        ],
+        server: "Test Server".into(),
+        map: "San Vansterdam".into(),
+        max_players: 16,
+    }
+}
+
+fn plugin_text(actions: &[crate::plugins::Action]) -> Vec<String> {
+    use crate::plugins::Action;
+    actions
+        .iter()
+        .map(|a| match a {
+            Action::Broadcast(t) => format!("all: {t}"),
+            Action::Tell(id, t) => format!("{id}: {t}"),
+            Action::Log(t) => format!("log: {t}"),
+            Action::Run(p, c) => format!("run {p}: {c}"),
+        })
+        .collect()
+}
+
+#[test]
+fn plugins_add_commands_messages_and_events() {
+    use crate::plugins::PluginManager;
+    let folder = std::env::temp_dir().join(format!("reskate-plugins-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&folder);
+    std::fs::create_dir_all(folder.join("folder-plugin")).unwrap();
+    for example in ["info", "automessages", "greeter", "chat-filter"] {
+        std::fs::copy(format!("examples/plugins/{example}.lua"), folder.join(format!("{example}.lua"))).unwrap();
+    }
+    std::fs::write(folder.join("folder-plugin/main.lua"), "reskate.after(5, function() reskate.run('say hi') end)").unwrap();
+    std::fs::write(folder.join("broken.lua"), "this is not lua").unwrap();
+    std::fs::write(folder.join("reserved.lua"), "reskate.command('kick', function() end)").unwrap();
+    std::fs::write(folder.join("forever.lua"), "reskate.command('spin', function() while true do end end)").unwrap();
+    std::fs::write(folder.join("_off.lua"), "reskate.command('off', function() end)").unwrap();
+
+    let start = 1_000_000_000u64;
+    let mut plugins = PluginManager::default();
+    let lines = plugins.load(&folder, start);
+    let all = lines.join("\n");
+    assert!(all.contains("broken failed to load"), "{all}");
+    assert!(all.contains("reserved failed to load") && all.contains("/kick is a server command"), "{all}");
+    assert!(all.contains("6 loaded"), "{all}");
+    assert!(!all.contains("/off"), "{all}");
+
+    let snapshot = plugin_snapshot();
+    let (alice, bob) = (snapshot.players[0].clone(), snapshot.players[1].clone());
+    let (_, reply) = plugins.command(snapshot.clone(), &bob, "discord", "").unwrap();
+    assert!(reply.starts_with("Join us on Discord"));
+    let (_, reply) = plugins.command(snapshot.clone(), &bob, "r", "").unwrap();
+    assert!(reply.starts_with("1. Be nice"));
+    let (_, reply) = plugins.command(snapshot.clone(), &bob, "info", "").unwrap();
+    assert_eq!(reply, "Hi Bob! You're on Test Server, map San Vansterdam, 2/16 players.");
+    assert!(plugins.command(snapshot.clone(), &bob, "nothing", "").is_none());
+
+    // Admin-only commands and /help.
+    let (actions, reply) = plugins.command(snapshot.clone(), &bob, "announce", "hello").unwrap();
+    assert!(actions.is_empty() && reply == "Only admins can use /announce.");
+    let (actions, reply) = plugins.command(snapshot.clone(), &alice, "announce", "hello all").unwrap();
+    assert_eq!(plugin_text(&actions), ["all: [Announcement] hello all"]);
+    assert!(reply.is_empty());
+    assert!(plugins.help(false).contains("/discord") && !plugins.help(false).contains("/announce"));
+    assert!(plugins.help(true).contains("/announce"));
+    assert_eq!(plugins.describe("announce", true).unwrap(), "/announce <text>: Announce something to everyone");
+    assert!(plugins.describe("announce", false).is_none());
+
+    // An endless loop is stopped and reported, and the server carries on.
+    let (actions, reply) = plugins.command(snapshot.clone(), &bob, "spin", "").unwrap();
+    assert!(reply.contains("failed"));
+    assert!(plugin_text(&actions)[0].contains("took too long"));
+
+    // Events.
+    let actions = plugins.join(snapshot.clone(), &bob);
+    assert_eq!(plugin_text(&actions), [format!("{}: Welcome, Bob! Type /online to see who is here.", bob.id)]);
+    let (actions, allowed) = plugins.chat(snapshot.clone(), &bob, "hello BADWORD1");
+    assert!(!allowed && plugin_text(&actions).len() == 1);
+    assert!(plugins.chat(snapshot.clone(), &bob, "hello").1);
+
+    // Timers and automatic messages.
+    assert!(!plugins.due(start + 1_000_000));
+    assert!(plugins.due(start + 5_000_000));
+    let actions = plugins.tick(start + 5_000_000, snapshot.clone());
+    assert_eq!(plugin_text(&actions), ["run folder-plugin: say hi"]);
+    assert!(!plugins.due(start + 6_000_000)); // "after" runs once
+    let actions = plugins.tick(start + 600_000_000, snapshot.clone());
+    assert_eq!(plugin_text(&actions), ["all: Welcome to Test Server! Type /help for the server's commands."]);
+    let actions = plugins.tick(start + 1_200_000_000, snapshot.clone());
+    assert_eq!(plugin_text(&actions), ["all: Join our Discord: type /discord"]);
+    // min_players = 2: quiet with one player on.
+    let mut alone = snapshot.clone();
+    alone.players.truncate(1);
+    let actions = plugins.tick(start + 1_800_000_000, alone);
+    assert_eq!(plugin_text(&actions), ["log: [greeter] 1 players online"]); // greeter's 30-minute timer, no message
+
+    // Reload keeps working.
+    std::fs::remove_file(folder.join("forever.lua")).unwrap();
+    assert!(plugins.reload().join("\n").contains("5 loaded"));
+    let _ = std::fs::remove_dir_all(&folder);
+}
