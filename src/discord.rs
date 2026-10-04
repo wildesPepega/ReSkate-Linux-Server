@@ -322,10 +322,14 @@ fn payload(entries: &[Entry], style: Style, username: &str) -> Value {
     let mut body = json!({
         "username": username.chars().take(80).collect::<String>(),
         "allowed_mentions": { "parse": [] }, // no @everyone or pings from player text
-        "flags": 4,                            // no link previews for URLs in chat
     });
     match style {
-        Style::Text => body["content"] = entries.iter().map(text_line).collect::<Vec<_>>().join("\n").into(),
+        Style::Text => {
+            body["content"] = entries.iter().map(text_line).collect::<Vec<_>>().join("\n").into();
+            // SUPPRESS_EMBEDS: no link previews for URLs in chat. It hides every embed of the
+            // message, so it must never go with embeds (whose links get no previews anyway).
+            body["flags"] = 4.into();
+        }
         Style::Embed => body["embeds"] = entries.iter().map(|e| embed(e, username)).collect::<Vec<_>>().into(),
     }
     body
