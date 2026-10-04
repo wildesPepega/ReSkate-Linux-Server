@@ -37,6 +37,20 @@ Ready-to-use examples are in [`examples/plugins/`](../examples/plugins/) (also i
 archive): `info.lua`, `automessages.lua`, `greeter.lua`, `chat-filter.lua`. Copy them into
 `plugins/` and edit them.
 
+### Editor support
+
+[`examples/plugins/_reskate.d.lua`](../examples/plugins/_reskate.d.lua) describes the whole API for
+the Lua language server. Put it next to your plugins and editors such as VS Code (with the "Lua"
+extension) offer autocompletion, parameter hints and inline docs for every `reskate.*` function.
+The leading `_` makes the server skip the file.
+
+### Limitation: the "/" suggestion list
+
+When players type `/`, the game shows a list of commands. That list is built into the ReSkate
+client and the protocol has no message for a server to add to it, so **plugin commands work but do
+not appear there**. Players find them with `/help` (which lists them) and `/help <command>`; an
+automatic message pointing to `/help` helps.
+
 ## Files and loading
 
 | | |
@@ -58,6 +72,54 @@ archive): `info.lua`, `automessages.lua`, `greeter.lua`, `chat-filter.lua`. Copy
 | `plugins reload` | reload all plugins |
 
 Admins can use both in game too (`/plugins`, `/plugins reload`).
+
+## How it works
+
+```
+             plugins/*.lua  ──load──▶  one sandboxed Lua state per plugin
+                                              │ registers
+                                              ▼
+ chat "/cmd" ───────────────┐      ┌──────────────────────────────┐
+ player joins / leaves / chats ──▶ │ plugin registry              │
+ server tick (every ~2 ms) ─┘      │ commands · timers · messages │
+                                   │ event handlers               │
+                                   └──────────────┬───────────────┘
+                                                  │ calls the Lua function (≤ 250 ms)
+                                                  ▼
+                                   reskate.broadcast / tell / run / log
+                                                  │ queued as actions
+                                                  ▼
+                                   server applies them in order ──▶ chat, console, log
+```
+
+1. **Loading.** At startup (and on `plugins reload`) the server reads `plugins/` in alphabetical
+   order, creates a fresh Lua state per plugin, installs the `reskate` table and runs the file
+   once. Running the file is when a plugin *registers* its commands, automatic messages, timers
+   and event handlers. If the file raises an error, everything it registered is removed again.
+2. **Snapshot.** Before any plugin function runs, the server hands the plugins a snapshot of the
+   connected players and the server's name, map and player limit. `reskate.players()`,
+   `reskate.find()`, `reskate.server()` and the placeholders read from it.
+3. **Calling.** The server calls the registered Lua function for the command, event or timer,
+   under the time limit.
+4. **Actions.** `reskate.broadcast`, `tell`, `run` and `log` do not act immediately. They queue an
+   action; when the Lua function has returned, the server applies the queue in order. A command's
+   return value is sent to the player last. So a plugin never runs in the middle of the server's
+   own processing. Applied actions behave like the same thing done by hand: a
+   `reskate.run("kick Bob")` fires the `leave` handlers as usual, while server messages
+   (`broadcast`, `tell`) never fire `chat` handlers.
+5. **Timers.** Each server tick asks whether a timer or automatic message is due (a cheap check);
+   only then is a snapshot built and the due ones run. Times use the server's monotonic clock, so
+   changing the system time does not affect them.
+
+Where the hooks sit in the server:
+
+| Hook | When |
+|---|---|
+| command | a chat line starting with `/` that is not a built-in player command (`/help`, `/party`, `/p`, `/vote`, `/yes`, `/no`), checked before admin server commands |
+| `join` | after the player's handshake, once they are in the roster and got the welcome message |
+| `leave` | after the player was removed, with the same reason the log shows |
+| `chat` | for every normal chat line, after the server's flood check and before it is relayed |
+| timers / automessages | at the end of each server tick |
 
 ## How plugins run
 

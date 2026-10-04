@@ -477,6 +477,7 @@ fn plugins_add_commands_messages_and_events() {
     for example in ["info", "automessages", "greeter", "chat-filter"] {
         std::fs::copy(format!("examples/plugins/{example}.lua"), folder.join(format!("{example}.lua"))).unwrap();
     }
+    std::fs::copy("examples/plugins/_reskate.d.lua", folder.join("_reskate.d.lua")).unwrap(); // skipped
     std::fs::write(folder.join("folder-plugin/main.lua"), "reskate.after(5, function() reskate.run('say hi') end)").unwrap();
     std::fs::write(folder.join("broken.lua"), "this is not lua").unwrap();
     std::fs::write(folder.join("reserved.lua"), "reskate.command('kick', function() end)").unwrap();
