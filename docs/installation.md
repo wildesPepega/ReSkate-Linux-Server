@@ -4,7 +4,7 @@
 
 - Linux x86_64 with glibc 2.31 or newer
 - `steamclient.so` from SteamCMD – the server signs in to Steam anonymously through it
-- Players and the server must run the **same ReSkate version** (this build: 1.0.5)
+- Players and the server must run the **same ReSkate version** (this build: 1.0.8)
 
 ## 1. Install SteamCMD
 
@@ -141,6 +141,24 @@ The server checks for a new ReSkate release on startup, every 30 minutes and on 
 and reports it in the console. Unlike the Windows server it cannot install the update itself: replace
 the files with a new Linux build (`ReSkateServer.json`, `Mods/` and logs are kept). Disable the check
 with `"auto_update": false` or `--no-update`.
+
+## Why players left
+
+The log line for a player leaving carries the reason. For connections that Steam ended it includes
+Steam's code:
+
+| Log | Meaning |
+|---|---|
+| `Disconnected: Steam 1000, closed by the player's game, …` | normal: the player left or closed the game |
+| `Disconnected: Steam 4001, timed out: the player stopped answering, …` | the player's connection dropped (their internet, Wi-Fi, a crash) |
+| `Disconnected: Steam 5003, timed out, …` | the connection timed out somewhere between player and server |
+| `Disconnected: Steam 3xxx, server: …` | a problem on the **server's** side (its network or Steam relay); look at the host |
+| `Disconnected: Steam 5005/5006/5008/5009, …` | Steam could not keep a route between player and server |
+| `Timed out waiting for gameplay data.` | connected, but the player's game sent nothing for 30 s (frozen or stuck loading) |
+| `A player ended their session.` | the player's game said goodbye |
+
+Many players leaving with 3xxx or 5xxx codes at the same moment point to the server's network.
+Single 1000s are just people leaving.
 
 ## Troubleshooting
 

@@ -16,7 +16,7 @@ join it straight from the game – no Wine, no Windows VM.
 
 | | |
 |---|---|
-| Based on | ReSkate **1.0.5**, network protocol **38** |
+| Based on | ReSkate **1.0.8**, network protocol **38** |
 | Platform | Linux x86_64, glibc 2.31 or newer (Debian 11+, Ubuntu 20.04+, …) |
 | Language | Rust (edition 2021) |
 | License | GPL-3.0 (same as ReSkate) |
