@@ -5,6 +5,8 @@
 - Rust 1.80 or newer (`rustup` recommended)
 - A C compiler (`gcc` or `clang`) – `zstd-safe` builds zstd and `mlua` builds Lua 5.4 from source
 - Linux x86_64
+- For release packages: [Zig](https://ziglang.org/download/) and
+  [cargo-zigbuild](https://github.com/rust-cross/cargo-zigbuild) (`cargo install cargo-zigbuild`)
 
 ## Build
 
@@ -34,14 +36,19 @@ Builds the release binary and writes `dist/ReSkateServer-linux-x64/` and
 `dist/ReSkateServer-linux-x64.tar.gz` (binary, `libsteam_api.so`, `world-layers.json`, docs and
 licenses) plus `dist/egg-reskate.json`.
 
-### Portable builds (older glibc)
+### Why zig? (glibc compatibility)
 
-The binary links dynamically against the system glibc, so it runs on systems with the same or a
-newer glibc than the build machine. To support older distros, build inside an old container:
+A plain `cargo build` links against the glibc of the build machine, so a binary built on a
+rolling-release distro (Arch: glibc 2.44) refuses to start on Debian 12 or in Pterodactyl's
+`yolks:debian` image (`version 'GLIBC_2.44' not found`). `package-linux.sh` therefore builds with
 
 ```bash
-docker run --rm -v "$PWD":/src -w /src rust:1-bullseye ./package-linux.sh
+cargo zigbuild --release --target x86_64-unknown-linux-gnu.2.31
 ```
+
+which links against glibc **2.31** (Debian 11, Ubuntu 20.04) no matter where it is built, and then
+checks with `objdump` that the binary needs nothing newer. The result is in
+`target/x86_64-unknown-linux-gnu/release/ReSkateServer`.
 
 ## Release profile
 
