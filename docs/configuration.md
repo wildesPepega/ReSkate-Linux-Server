@@ -25,6 +25,7 @@ the console or by an admin in game is saved back to this file.
     "low_rate_start": 170
   },
   "enforce_tuning": true,
+  "global_bans": true,
   "layers": {},
   "listed": true,
   "map": "San Vansterdam",
@@ -73,6 +74,7 @@ the console or by an admin in game is saved back to this file.
 | `welcome` | `""` | A chat line sent to each player as they join. |
 | `listed` | `true` | `false` hides the server from the browser; players then need the code. |
 | `auto_update` | `true` | Install new Linux builds on their own once the server is empty (see [installation.md](installation.md#updates)). |
+| `global_bans` | `true` | Turn away players the ReSkate team has banned from multiplayer ("You are banned from ReSkate multiplayer."), also when they are already on. The list is read from `api.reskate.dev` at startup and every ten minutes (a minute after a failure); while it cannot be read, the bans already read hold. `false` lets them in; the server's own `bans` apply either way. |
 | `admins` | `[]` | SteamID64s **as strings** who may change settings in game, e.g. `["76561198000000000"]`. |
 | `bans` | `[]` | Players who can never join. Managed with `ban` / `unban`. |
 

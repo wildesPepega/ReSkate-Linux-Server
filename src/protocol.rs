@@ -1,12 +1,12 @@
 // The ReSkate multiplayer wire protocol (Extension/Multiplayer/Net/protocol.{h,cpp} and the
-// session model headers it uses). Byte for byte what the game speaks: protocol version 39.
+// session model headers it uses). Byte for byte what the game speaks: protocol version 41.
 use crate::world::{park_id, world_layers, ParkChoices, PARK_FAMILIES, PARK_LOTS, WORLD_LAYER_MODES};
 
 pub const MAX_SKATER_BONES: usize = 512;
 pub const MAX_BOARD_BONES: usize = 64;
 pub const MAX_PACKET: usize = 24576;
 pub const PACKET_HEADER_SIZE: usize = 64;
-pub const PROTOCOL_VERSION: u16 = 39;
+pub const PROTOCOL_VERSION: u16 = 41;
 pub const MAX_THROWDOWN_MESSAGE: usize = 4096;
 pub const MAX_PHYSICS_TUNING: usize = 16384;
 // A host's physics beyond its tuning (Engine/Game/Multiplayer/session_physics.h).
@@ -194,11 +194,31 @@ pub struct PlayerCard {
     pub emblem: u32,
     pub title: u32,
 }
+// How one of a listed player's marked cosmetics is coloured (Remote/cosmetics.h), chosen on the
+// game's Special page and carried in their outfit so everyone sees the same. The server only
+// relays it.
+#[derive(Clone, Copy, Default, PartialEq, Debug)]
+pub struct MarkStyle {
+    pub mode: u8, // 0 standard (what the player's list gives), 1 off, 2 gradient, 3 solid
+    pub from: [u8; 3],
+    pub to: [u8; 3],
+    pub speed: u8, // 0 normal, 1 slow, 2 fast
+}
+// The marked cosmetics: Top, Bottoms, Shoes, Socks, Hat, Glasses, Outfit, Costume, then the
+// board's Deck, Grip tape, Trucks, Wheels.
+pub const MARK_ITEMS: usize = 12;
+pub fn valid_mark_style(style: &MarkStyle) -> bool {
+    style.mode <= 3 && style.speed <= 2
+}
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct Appearance {
     pub skater: CosmeticRecipe,
     pub board: CosmeticRecipe,
     pub card: PlayerCard,
+    // The player turned off what the ReSkate backend gives them: their tag, their animated items.
+    pub hide_tag: bool,
+    pub hide_items: bool,
+    pub marks: [MarkStyle; MARK_ITEMS],
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -650,7 +670,7 @@ pub fn valid_appearance(a: &Appearance) -> bool {
     if a.skater.key != SKATER_RECIPE_KEY || a.skater.version != 2 || a.board.key != BOARD_RECIPE_KEY || a.board.version != 1 {
         return false;
     }
-    let mut size = PACKET_HEADER_SIZE + 12;
+    let mut size = PACKET_HEADER_SIZE + 13 + MARK_ITEMS * 8;
     for r in [&a.skater, &a.board] {
         if r.scalars.len() > MAX_COSMETIC_SCALARS || r.items.is_empty() || r.items.len() > MAX_COSMETIC_SLOTS {
             return false;
@@ -1184,6 +1204,14 @@ pub fn encode(p: &Packet, compact_pose: bool) -> Vec<u8> {
         w.int(u64::from(p.appearance.card.background), 4);
         w.int(u64::from(p.appearance.card.emblem), 4);
         w.int(u64::from(p.appearance.card.title), 4);
+        w.int(u64::from(p.appearance.hide_tag) | (u64::from(p.appearance.hide_items) << 1), 1);
+        for style in &p.appearance.marks {
+            w.int(u64::from(style.mode), 1);
+            for &part in style.from.iter().chain(style.to.iter()) {
+                w.int(u64::from(part), 1);
+            }
+            w.int(u64::from(style.speed), 1);
+        }
     } else if p.kind == kind::AUDIO {
         w.int(p.audio.len() as u64, 2);
         let mut previous = AudioState::default();
@@ -1580,7 +1608,19 @@ pub fn decode(bytes: &[u8]) -> Option<Packet> {
         p.appearance.card.background = r.int(4)? as u32;
         p.appearance.card.emblem = r.int(4)? as u32;
         p.appearance.card.title = r.int(4)? as u32;
-        if p.map == 0 || !valid_appearance(&p.appearance) {
+        let flags = r.int(1)?;
+        p.appearance.hide_tag = flags & 1 != 0;
+        p.appearance.hide_items = flags & 2 != 0;
+        let mut styled = true;
+        for style in &mut p.appearance.marks {
+            style.mode = r.int(1)? as u8;
+            for part in style.from.iter_mut().chain(style.to.iter_mut()) {
+                *part = r.int(1)? as u8;
+            }
+            style.speed = r.int(1)? as u8;
+            styled &= valid_mark_style(style);
+        }
+        if flags > 3 || !styled || p.map == 0 || !valid_appearance(&p.appearance) {
             return None;
         }
     } else if p.kind == kind::AUDIO {

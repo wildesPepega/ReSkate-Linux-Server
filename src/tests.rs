@@ -39,7 +39,7 @@ fn header_layout_matches_the_game() {
     let raw = encode(&base(kind::AWAY), false);
     assert_eq!(raw.len(), PACKET_HEADER_SIZE);
     assert_eq!(&raw[..4], b"RMP1");
-    assert_eq!(u16::from_le_bytes([raw[4], raw[5]]), 39);
+    assert_eq!(u16::from_le_bytes([raw[4], raw[5]]), 41);
     assert_eq!(u16::from_le_bytes([raw[6], raw[7]]), kind::AWAY);
     assert_eq!(u32::from_le_bytes(raw[8..12].try_into().unwrap()), 0);
     let p = decode(&raw).unwrap();
@@ -248,7 +248,7 @@ fn cosmetics_and_audio_use_xor_deltas() {
             .map(|slot| CosmeticSlot { slot, asset: format!("Own_TopShirt_Gen_TshirtRelaxed_{slot:05}").into_bytes(), parameters: vec![slot; 6] })
             .collect(),
     };
-    p.appearance = Appearance { skater: recipe(SKATER_RECIPE_KEY, 2), board: recipe(BOARD_RECIPE_KEY, 1), card: PlayerCard { background: 1, emblem: 2, title: 3 } };
+    p.appearance = Appearance { skater: recipe(SKATER_RECIPE_KEY, 2), board: recipe(BOARD_RECIPE_KEY, 1), card: PlayerCard { background: 1, emblem: 2, title: 3 }, ..Default::default() };
     let mut sender = DeltaSender::default();
     let mut receiver = DeltaReceiver::default();
     let mut missing = false;
@@ -1009,4 +1009,116 @@ reskate.on("stop", function(reason) reskate.broadcast("bye: " .. reason) end)
     let (_, reply) = reloaded.command(plugin_snapshot(), &alice, "playtime", "").unwrap();
     assert_eq!(reply, "Alice: 1h 15m");
     let _ = std::fs::remove_dir_all(&folder);
+}
+
+fn outfit_packet() -> Packet {
+    let mut p = base(kind::COSMETICS);
+    p.appearance = Appearance {
+        skater: CosmeticRecipe {
+            key: SKATER_RECIPE_KEY,
+            version: 2,
+            scalars: vec![0x3f80_0000],
+            items: vec![CosmeticSlot { slot: 4, asset: b"Own_TopShirt".to_vec(), parameters: vec![1, 2] }],
+        },
+        board: CosmeticRecipe { key: BOARD_RECIPE_KEY, version: 1, scalars: vec![0x3f80_0000], items: vec![CosmeticSlot { slot: 13, asset: b"Own_Deck".to_vec(), parameters: vec![7] }] },
+        card: PlayerCard { background: 1, emblem: 2, title: 3 },
+        ..Default::default()
+    };
+    p
+}
+
+#[test]
+fn outfits_carry_hidden_tags_and_mark_styles() {
+    let p = outfit_packet();
+    let bytes = encode(&p, false);
+    let decoded = decode(&bytes).unwrap();
+    assert!(decoded.appearance == p.appearance && !decoded.appearance.hide_tag && !decoded.appearance.hide_items);
+    // A player's choices to go without their backend tag, or its animated items, each on its own.
+    for (tag, items) in [(true, false), (false, true), (true, true)] {
+        let mut hidden = p.clone();
+        hidden.appearance.hide_tag = tag;
+        hidden.appearance.hide_items = items;
+        let told = decode(&encode(&hidden, false)).unwrap();
+        assert!(told.appearance.hide_tag == tag && told.appearance.hide_items == items && told.appearance == hidden.appearance);
+        assert!(told.appearance != p.appearance);
+    }
+    // How each marked cosmetic animates.
+    let mut styled = p.clone();
+    styled.appearance.marks[0] = MarkStyle { mode: 2, from: [1, 2, 3], to: [250, 251, 252], speed: 2 };
+    styled.appearance.marks[4] = MarkStyle { mode: 1, from: [0; 3], to: [0; 3], speed: 1 };
+    styled.appearance.marks[MARK_ITEMS - 1] = MarkStyle { mode: 3, from: [9, 8, 7], to: [0; 3], speed: 0 };
+    let raw = encode(&styled, false);
+    let kept = decode(&raw).unwrap();
+    assert!(kept.appearance == styled.appearance && kept.appearance.marks[0].to[2] == 252 && kept.appearance.marks[1] == MarkStyle::default());
+    assert!(!valid_mark_style(&MarkStyle { mode: 4, ..Default::default() }) && !valid_mark_style(&MarkStyle { speed: 3, ..Default::default() }));
+    // The flags and styles are the last 1 + 12 * 8 bytes: a flag or style no menu can make is refused.
+    let flags_at = raw.len() - 1 - MARK_ITEMS * 8;
+    let mut corrupt = raw.clone();
+    corrupt[flags_at] = 4;
+    assert!(decode(&corrupt).is_none());
+    let mut corrupt = raw.clone();
+    corrupt[flags_at + 1] = 4; // the first style's mode
+    assert!(decode(&corrupt).is_none());
+    let mut corrupt = raw.clone();
+    corrupt[flags_at + 8] = 3; // the first style's speed
+    assert!(decode(&corrupt).is_none());
+    for n in 0..raw.len() {
+        assert!(decode(&raw[..n]).is_none(), "truncated outfit accepted at {n}");
+    }
+    // The server relays it through its delta codec unchanged.
+    let sender = crate::wire::DeltaSender::default();
+    let mut receiver = crate::wire::DeltaReceiver::default();
+    let mut missing = false;
+    let update = sender.prepare(&styled);
+    assert_eq!(receiver.receive(&update.bytes, &mut missing, 1).unwrap().appearance, styled.appearance);
+}
+
+#[test]
+fn global_ban_lists_are_read_strictly() {
+    use crate::global_bans::parse_ban_list;
+    const GRIEFER: u64 = 76561198000000009;
+    const CHEATER: u64 = 76561198000000010;
+    // A list with nobody on it is still a list.
+    assert_eq!(parse_ban_list(r#"{"categories":{"dev":["76561198000000011"]},"banned":[]}"#), Ok(vec![]));
+    assert_eq!(
+        parse_ban_list(r#"{"categories":{},"banned":["76561198000000010","76561198000000009","76561198000000010"]}"#),
+        Ok(vec![GRIEFER, CHEATER])
+    );
+    // A backend from before it had bans bans nobody; a category this build does not know is ignored.
+    assert_eq!(parse_ban_list(r#"{"categories":{"dev":[],"someday":[1]}}"#), Ok(vec![]));
+    // An answer that is not the lists (the backend down, a proxy's error page) is refused, so it
+    // lifts no ban.
+    for wrong in [
+        "",
+        "<html>502 Bad Gateway</html>",
+        r#"{"banned":["76561198000000009"]}"#,
+        r#"{"categories":{},"banned":["everyone"]}"#,
+        r#"{"categories":{},"banned":"76561198000000009"}"#,
+        r#"{"categories":{},"banned":[76561198000000009]}"#,
+        r#"{"categories":{},"banned":["76561197960265728"]}"#,
+        r#"{"categories":{},"banned":["076561198000000009"]}"#,
+        r#"{"categories":{"dev":["nobody"]},"banned":[]}"#,
+    ] {
+        assert!(parse_ban_list(wrong).is_err(), "accepted: {wrong}");
+    }
+}
+
+#[test]
+fn globally_banned_players_are_turned_away_unless_the_server_opts_out() {
+    const GRIEFER: u64 = 76561198000000009;
+    let mut host = crate::host::Host::new(ServerConfig::default(), crate::steam::SteamTransport::new(), Box::new(|_: &str| {}));
+    assert!(!host.globally_banned(GRIEFER), "a player was banned before any list was read");
+    host.set_global_bans(vec![GRIEFER]);
+    assert!(host.globally_banned(GRIEFER) && !host.globally_banned(PLAYER));
+    host.config.global_bans = false;
+    assert!(!host.globally_banned(GRIEFER));
+}
+
+// The deployed backend, read the way the server reads it. Off the network in normal test runs:
+// cargo test -- --ignored global_ban_list_reaches_the_backend
+#[test]
+#[ignore]
+fn global_ban_list_reaches_the_backend() {
+    let ids = crate::global_bans::read_ban_list().unwrap();
+    println!("{} banned", ids.len());
 }
