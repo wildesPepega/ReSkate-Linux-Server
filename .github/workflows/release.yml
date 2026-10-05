@@ -1,0 +1,58 @@
+# A push to main whose Cargo.toml version has no release yet publishes it: tests, the package,
+# the tag v<version> and the release with ReSkateServer-linux-x64.tar.gz and egg-reskate.json.
+# Servers with auto_update then install it once they are empty. The text is
+# release-notes/v<version>.md when there is one, GitHub's generated notes otherwise.
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "v$version is already released; nothing to do."
+            echo "new=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: ./.github/actions/setup-build
+        if: steps.version.outputs.new == 'true'
+      - name: Tests
+        if: steps.version.outputs.new == 'true'
+        run: cargo test --release
+      - name: Package (glibc 2.31)
+        if: steps.version.outputs.new == 'true'
+        run: |
+          ./package-linux.sh
+          ./dist/ReSkateServer-linux-x64/ReSkateServer --version | grep -qx "ReSkateServer ${{ steps.version.outputs.version }}"
+      - name: Publish
+        if: steps.version.outputs.new == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          notes=(--generate-notes)
+          if [ -f "release-notes/v$VERSION.md" ]; then notes=(--notes-file "release-notes/v$VERSION.md"); fi
+          gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "ReSkate Linux Server $VERSION" "${notes[@]}" \
+            dist/ReSkateServer-linux-x64.tar.gz dist/egg-reskate.json

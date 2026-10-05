@@ -50,6 +50,23 @@ which links against glibc **2.31** (Debian 11, Ubuntu 20.04) no matter where it 
 checks with `objdump` that the binary needs nothing newer. The result is in
 `target/x86_64-unknown-linux-gnu/release/ReSkateServer`.
 
+## Releases and updates (automatic)
+
+- **Every pull request** runs `.github/workflows/ci.yml`: the tests, and the package built exactly as
+  a release builds it (glibc 2.31), which must start and name the version in `Cargo.toml`.
+- **Every push to `main`** runs `.github/workflows/release.yml`. When the version in `Cargo.toml`
+  has no release yet, it runs the tests, builds the package and publishes the release `v<version>`
+  with `ReSkateServer-linux-x64.tar.gz` and `egg-reskate.json`. Its text is
+  `release-notes/v<version>.md` (GitHub's generated notes when there is none). Running servers with
+  `auto_update` install it once they are empty.
+- **New ReSkate releases**: a scheduled Claude Code routine watches
+  [Dingo-Shenanigans/ReSkate](https://github.com/Dingo-Shenanigans/ReSkate). When a new release
+  is out, it ports the server-side changes (network protocol, server, config), adds tests, sets the
+  version to the ReSkate version, writes the release notes and opens a pull request; once CI is
+  green it merges it, which publishes the release as above.
+
+So a release is: change the version (and `release-notes/v<version>.md`) in a PR, merge it.
+
 ## Release profile
 
 `Cargo.toml` builds with `lto = true`, `codegen-units = 1`, `opt-level = 3` and strips symbols.
