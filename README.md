@@ -63,9 +63,10 @@ Everything the Windows dedicated server does, plus a few things it doesn't:
 - World layer sync (time of day), park layouts, password, bans
 - Custom maps from a `Mods/` folder
 - Clean shutdown on `quit`, Ctrl+C, SIGTERM and SIGHUP (signs out of Steam first)
-- **Lua plugins**: custom `/commands`, automatic messages, timers and events ([docs](docs/plugins.md))
+- **Lua plugins**: custom `/commands`, automatic messages, timers, events and saved data ([docs](docs/plugins.md))
 - **Self-updating**: installs new releases on its own seconds after the server is empty, after checking
   the download and test-starting it ([docs](docs/installation.md#updates))
+- **Status page**: live JSON at `http://<ip>:<port>/status` on the game port, for websites and bots ([docs](docs/configuration.md#status-page))
 - **Discord webhooks** for console events: joins, leaves, start/stop, updates, throwdowns, votes, anticheat, … ([docs](docs/configuration.md#discord))
 - Rejoining players replace their old connection instead of being turned away
 - Daily log files, two weeks kept

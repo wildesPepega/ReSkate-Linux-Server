@@ -261,6 +261,10 @@ pub struct Host {
     layers: Vec<String>,
     roster_dirty: bool,
     running: bool,
+    started: u64, // when start() opened the server (crate::now_us())
+    // Set while plugins handle a map change: a map they change to from there gets no event of
+    // its own, so two plugins (or one) cannot send the server from map to map without end.
+    in_map_event: bool,
     bans_revision: u64,
     now: u64,
     last_roster: u64,
@@ -307,6 +311,8 @@ impl Host {
             layers: Vec::new(),
             roster_dirty: true,
             running: false,
+            started: 0,
+            in_map_event: false,
             bans_revision: 1,
             now: 0,
             last_roster: 0,
@@ -428,7 +434,27 @@ impl Host {
         }
     }
     fn player_info(&self, id: u64) -> PlayerInfo {
-        PlayerInfo { id, name: self.name_of(id), admin: self.is_admin(id) }
+        let online_seconds = self.guests.get(&id).map_or(0, |g| self.online_seconds(g));
+        PlayerInfo { id, name: self.name_of(id), admin: self.is_admin(id), online_seconds }
+    }
+    // How long a player has been connected, in whole seconds.
+    fn online_seconds(&self, g: &Guest) -> u64 {
+        if g.connected_at != 0 && self.now > g.connected_at {
+            (self.now - g.connected_at) / 1_000_000
+        } else {
+            0
+        }
+    }
+    fn uptime_seconds(&self) -> u64 {
+        if self.started != 0 && self.now > self.started {
+            (self.now - self.started) / 1_000_000
+        } else {
+            0
+        }
+    }
+    // Listed in the server browser: set so, and with a name clients show.
+    fn listed(&self) -> bool {
+        self.config.listed && !contains_bad_words(&self.config.name)
     }
     fn plugin_snapshot(&self) -> Snapshot {
         Snapshot {
@@ -436,6 +462,9 @@ impl Host {
             server: self.config.name.clone(),
             map: self.map_name(),
             max_players: self.config.max_players,
+            password: !self.config.password.is_empty(),
+            listed: self.listed(),
+            uptime_seconds: self.uptime_seconds(),
         }
     }
     fn apply_plugin_actions(&mut self, actions: Vec<Action>) {
@@ -466,6 +495,36 @@ impl Host {
     pub fn map_name(&self) -> String {
         map_label(&self.config.map)
     }
+    // What GET /status answers (src/status.rs): public facts only. The join code only for a
+    // listed server, whose code the server browser shows anyway; player names only if allowed.
+    pub fn status(&self) -> serde_json::Value {
+        let listed = self.listed();
+        let mut players: Vec<serde_json::Value> = Vec::new();
+        if self.config.status_players {
+            for g in self.guests.values().filter(|g| g.handshaken) {
+                players.push(serde_json::json!({
+                    "name": guest_name(g),
+                    "admin": self.is_admin(g.member.id),
+                    "online_seconds": self.online_seconds(g),
+                }));
+            }
+        }
+        let updated = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
+        serde_json::json!({
+            "name": self.config.name,
+            "version": crate::update::VERSION,
+            "protocol": PROTOCOL_VERSION,
+            "map": self.map_name(),
+            "players": self.players(),
+            "max_players": self.config.max_players,
+            "password": !self.config.password.is_empty(),
+            "listed": listed,
+            "join_code": if listed && self.id != 0 { serde_json::Value::from(self.invite()) } else { serde_json::Value::Null },
+            "uptime_seconds": self.uptime_seconds(),
+            "player_list": if self.config.status_players { serde_json::Value::from(players) } else { serde_json::Value::Null },
+            "updated": updated,
+        })
+    }
     // Everyone connected, including players still joining.
     pub fn connected(&self) -> usize {
         self.guests.len()
@@ -483,6 +542,7 @@ impl Host {
             return Err(self.transport.detail.clone());
         }
         self.id = self.transport.local_id;
+        self.started = crate::now_us();
         self.secret = nonce();
         self.epoch = nonce();
         self.world = 1;
@@ -499,6 +559,10 @@ impl Host {
         if !self.running {
             return;
         }
+        // Plugins save what they keep, and may say goodbye while everyone is still there.
+        self.now = crate::now_us();
+        let actions = self.plugins.stop(self.plugin_snapshot(), reason);
+        self.apply_plugin_actions(actions);
         let away = self.packet(kind::AWAY, crate::now_us());
         let ids: Vec<u64> = self.guests.iter().filter(|(_, g)| g.handshaken).map(|(&id, _)| id).collect();
         for id in ids {
@@ -827,6 +891,12 @@ impl Host {
         self.last_world_state = 0;
         self.send_world_state();
         self.roster_dirty = true;
+        if !self.in_map_event {
+            self.in_map_event = true;
+            let actions = self.plugins.map(self.plugin_snapshot(), &self.map_name());
+            self.apply_plugin_actions(actions);
+            self.in_map_event = false;
+        }
     }
 
     fn drop_guest(&mut self, id: u64, reason: &str) {
@@ -838,7 +908,7 @@ impl Host {
             self.log(&format!("{name} left ({reason})"));
             let guests = &self.guests;
             self.activity.left(id, &|player| current_name(guests, player));
-            let player = PlayerInfo { id, name: name.clone(), admin: self.is_admin(id) };
+            let player = PlayerInfo { id, name: name.clone(), admin: self.is_admin(id), online_seconds: self.online_seconds(&guest) };
             let actions = self.plugins.leave(self.plugin_snapshot(), &player, reason);
             self.apply_plugin_actions(actions);
         } else {

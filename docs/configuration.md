@@ -44,6 +44,7 @@ the console or by an admin in game is saved back to this file.
   "score_allow": [],
   "score_check": "warn",
   "speed_check": "warn",
+  "status": { "enabled": true, "players": true },
   "tps": 30,
   "voice_chat": true,
   "voice_range": 300.0,
@@ -143,6 +144,45 @@ Players vote with `/yes` and `/no` in chat.
 |---|---|---|
 | `world_layer_sync` | `false` | Force the `layers` below on every player. Needs `world-layers.json` next to the server. |
 | `layers` | `{}` | World layer key → `"on"` / `"off"`. Usually set with the `tod` and `layer` commands. |
+
+### Status page
+
+The server answers `GET http://<ip>:<port>/status` with its live status as JSON, for websites, Discord
+bots or monitoring. `<port>` is the game port (`--port`): the game uses it over UDP, the status page
+over **TCP**, so no extra port is needed (a Pterodactyl allocation opens both).
+
+```json
+"status": { "enabled": true, "players": true }
+```
+
+| Key | |
+|---|---|
+| `enabled` | Serve the status page. Read at startup: restart after changing it. |
+| `players` | Include `player_list` (names, admin, time online). `false`: only the counts. |
+
+```json
+{
+  "name": "ReSkate server", "version": "1.1.0-2", "protocol": 39,
+  "map": "San Vansterdam", "players": 2, "max_players": 16,
+  "password": false, "listed": true,
+  "join_code": "90294023726563330-ff2f9e71a5ad5603",
+  "uptime_seconds": 86400,
+  "player_list": [
+    { "name": "Bob", "admin": false, "online_seconds": 1260 },
+    { "name": "Alice", "admin": true, "online_seconds": 300 }
+  ],
+  "updated": 1791172800
+}
+```
+
+- `players` counts players who finished joining; `player_list` (or `null` with `"players": false`)
+  lists them.
+- `join_code` is only given for a listed server, whose code the server browser shows anyway;
+  otherwise `null`. The password is never part of it.
+- `updated` is a Unix time; the snapshot is refreshed every second. A server that is down does not
+  answer at all.
+- Also at `/status.json`. Answers carry `Access-Control-Allow-Origin: *`, so a web page on any domain
+  can fetch it.
 
 ### Discord
 

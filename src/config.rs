@@ -72,6 +72,9 @@ pub struct ServerConfig {
     pub discord_webhook: String,
     pub discord_events: Vec<String>,
     pub discord_style: String,
+    // GET /status over TCP on the game port (src/status.rs), and whether it names the players.
+    pub status_enabled: bool,
+    pub status_players: bool,
     // Settings an older file had that are no longer read, as "key = value", for the log.
     pub dropped: Vec<String>,
 }
@@ -117,6 +120,8 @@ impl Default for ServerConfig {
             discord_webhook: String::new(),
             discord_events: DEFAULT_DISCORD_EVENTS.iter().map(|e| e.to_string()).collect(),
             discord_style: "embed".into(),
+            status_enabled: true,
+            status_players: true,
             dropped: Vec::new(),
         }
     }
@@ -203,6 +208,10 @@ fn to_json(c: &ServerConfig) -> Value {
     discord.insert("events".into(), Value::Array(c.discord_events.iter().map(|e| e.clone().into()).collect()));
     discord.insert("style".into(), c.discord_style.clone().into());
     root.insert("discord".into(), Value::Object(discord));
+    let mut status = Map::new();
+    status.insert("enabled".into(), c.status_enabled.into());
+    status.insert("players".into(), c.status_players.into());
+    root.insert("status".into(), Value::Object(status));
     Value::Object(root)
 }
 
@@ -326,6 +335,10 @@ pub fn load_config(file: &Path, added: &mut Vec<String>) -> Result<ServerConfig,
         if let Some(value) = root.get(key) {
             c.dropped.push(format!("{key} = {value}"));
         }
+    }
+    if let Some(status) = root.get("status").filter(|s| s.is_object()) {
+        c.status_enabled = read_bool(status, "enabled", c.status_enabled)?;
+        c.status_players = read_bool(status, "players", c.status_players)?;
     }
     if let Some(discord) = root.get("discord").filter(|d| d.is_object()) {
         c.discord_webhook = read_string(discord, "webhook", "")?.trim().to_string();

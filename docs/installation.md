@@ -79,9 +79,11 @@ Type `quit`, press Ctrl+C or send SIGTERM / SIGHUP. The server signs out of Stea
 |---|---|---|---|
 | `--port` | 27015 | UDP | Steam game server port |
 | `--query-port` | 27016 | UDP | Steam server queries (ping in the browser) |
+| `--port` | 27015 | TCP | [Status page](configuration.md#status-page) (`/status`) |
 
-Opening them is optional: players connect through Steam's relay network. With open ports the browser
-shows the ping and joins are a little faster.
+Opening the UDP ports is optional: players connect through Steam's relay network. With open ports the
+browser shows the ping and joins are a little faster. Open the TCP port if the status page should be
+reachable from outside.
 
 ## Running as a systemd service
 

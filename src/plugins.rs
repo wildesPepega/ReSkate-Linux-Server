@@ -15,6 +15,9 @@ const LOAD_LIMIT: Duration = Duration::from_secs(2);
 const MEMORY_LIMIT: usize = 32 * 1024 * 1024;
 const MIN_INTERVAL_US: u64 = 1_000_000;
 const MIN_AUTOMESSAGE_US: u64 = 10_000_000;
+// reskate.save(): the largest file one plugin may keep, and how deep its tables may nest.
+const DATA_LIMIT: usize = 1024 * 1024;
+const DATA_DEPTH: usize = 32;
 
 // Commands the server answers itself; plugins cannot take these names.
 const RESERVED: &[&str] = &[
@@ -26,11 +29,12 @@ const RESERVED: &[&str] = &[
     "party-size", "speed-check", "score-check", "score-allow", "admin", "admins", "update", "quit", "plugins", "version",
 ];
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct PlayerInfo {
     pub id: u64,
     pub name: String,
     pub admin: bool,
+    pub online_seconds: u64, // since the player's connection was made
 }
 
 #[derive(Clone, Default)]
@@ -39,6 +43,9 @@ pub struct Snapshot {
     pub server: String,
     pub map: String,
     pub max_players: u32,
+    pub password: bool,
+    pub listed: bool,
+    pub uptime_seconds: u64,
 }
 
 pub enum Action {
@@ -81,6 +88,8 @@ enum Event {
     Join,
     Leave,
     Chat,
+    Map,
+    Stop,
 }
 
 // What all plugins share with the API functions they call.
@@ -149,7 +158,92 @@ fn player_table(lua: &Lua, player: &PlayerInfo) -> mlua::Result<Table> {
     table.set("id", player.id.to_string())?;
     table.set("name", player.name.as_str())?;
     table.set("admin", player.admin)?;
+    table.set("online_seconds", player.online_seconds)?;
     Ok(table)
+}
+
+// reskate.save(): a Lua value as JSON. A table whose keys are exactly 1..n is a list; any other
+// table an object, its keys written as text. Functions and the like cannot be saved.
+fn lua_to_json(value: &Value, depth: usize) -> Result<serde_json::Value, String> {
+    if depth > DATA_DEPTH {
+        return Err(format!("tables nest deeper than {DATA_DEPTH} levels"));
+    }
+    Ok(match value {
+        Value::Nil => serde_json::Value::Null,
+        Value::Boolean(b) => (*b).into(),
+        Value::Integer(i) => (*i).into(),
+        Value::Number(n) => serde_json::Number::from_f64(*n).map(serde_json::Value::Number).ok_or("numbers must be finite")?,
+        Value::String(s) => s.to_str().map_err(|_| "text must be UTF-8")?.to_string().into(),
+        Value::Table(table) => {
+            let length = table.raw_len();
+            let mut entries = Vec::new();
+            for pair in table.pairs::<Value, Value>() {
+                entries.push(pair.map_err(|e| e.to_string())?);
+            }
+            let list = length > 0
+                && entries.len() == length
+                && entries.iter().all(|(k, _)| matches!(k, Value::Integer(i) if *i >= 1 && *i as usize <= length));
+            if list {
+                let mut items = vec![serde_json::Value::Null; length];
+                for (key, item) in &entries {
+                    if let Value::Integer(i) = key {
+                        items[*i as usize - 1] = lua_to_json(item, depth + 1)?;
+                    }
+                }
+                serde_json::Value::Array(items)
+            } else {
+                let mut object = serde_json::Map::new();
+                for (key, item) in &entries {
+                    let key = match key {
+                        Value::String(s) => s.to_str().map_err(|_| "keys must be UTF-8")?.to_string(),
+                        Value::Integer(i) => i.to_string(),
+                        Value::Number(n) if n.is_finite() => n.to_string(),
+                        Value::Boolean(b) => b.to_string(),
+                        other => return Err(format!("a {} cannot be a key", other.type_name())),
+                    };
+                    object.insert(key, lua_to_json(item, depth + 1)?);
+                }
+                serde_json::Value::Object(object)
+            }
+        }
+        other => return Err(format!("a {} cannot be saved", other.type_name())),
+    })
+}
+
+fn json_to_lua(lua: &Lua, value: &serde_json::Value) -> mlua::Result<Value> {
+    Ok(match value {
+        serde_json::Value::Null => Value::Nil,
+        serde_json::Value::Bool(b) => Value::Boolean(*b),
+        serde_json::Value::Number(n) => match n.as_i64() {
+            Some(i) => Value::Integer(i),
+            None => Value::Number(n.as_f64().unwrap_or(0.0)),
+        },
+        serde_json::Value::String(s) => Value::String(lua.create_string(s)?),
+        serde_json::Value::Array(items) => {
+            let table = lua.create_table()?;
+            for (i, item) in items.iter().enumerate() {
+                table.raw_set(i + 1, json_to_lua(lua, item)?)?;
+            }
+            Value::Table(table)
+        }
+        serde_json::Value::Object(map) => {
+            let table = lua.create_table()?;
+            for (key, item) in map {
+                table.raw_set(key.as_str(), json_to_lua(lua, item)?)?;
+            }
+            Value::Table(table)
+        }
+    })
+}
+
+// Writes a plugin's data: whole or not at all (a crash mid-write leaves the old file).
+fn write_data(file: &Path, text: &str) -> std::io::Result<()> {
+    if let Some(folder) = file.parent() {
+        std::fs::create_dir_all(folder)?;
+    }
+    let partial = file.with_extension("json.tmp");
+    std::fs::write(&partial, text)?;
+    std::fs::rename(&partial, file)
 }
 
 // A player table, a SteamID64 string or number, or the start of a connected player's name.
@@ -404,7 +498,9 @@ impl PluginManager {
                     "join" => Event::Join,
                     "leave" => Event::Leave,
                     "chat" => Event::Chat,
-                    _ => return Err(mlua::Error::runtime(format!("unknown event \"{event}\" (join, leave, chat)"))),
+                    "map" => Event::Map,
+                    "stop" => Event::Stop,
+                    _ => return Err(mlua::Error::runtime(format!("unknown event \"{event}\" (join, leave, chat, map, stop)"))),
                 };
                 core.borrow_mut().events.push((event, index, handler));
                 Ok(())
@@ -486,12 +582,47 @@ impl PluginManager {
                 table.set("map", core.snapshot.map.as_str())?;
                 table.set("players", core.snapshot.players.len())?;
                 table.set("max_players", core.snapshot.max_players)?;
+                table.set("password", core.snapshot.password)?;
+                table.set("listed", core.snapshot.listed)?;
+                table.set("uptime_seconds", core.snapshot.uptime_seconds)?;
                 Ok(table)
             })?,
         )?;
 
         let core = self.core.clone();
         api.set("format", lua.create_function(move |_, text: String| Ok(core.borrow().format(&text)))?)?;
+
+        // The plugin's own data, kept across restarts in plugins/data/<name>.json.
+        let file = self.dir.join("data").join(format!("{plugin_name}.json"));
+        let read = file.clone();
+        api.set(
+            "load",
+            lua.create_function(move |lua, ()| {
+                let text = match std::fs::read_to_string(&read) {
+                    Ok(text) => text,
+                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Value::Table(lua.create_table()?)),
+                    Err(e) => return Err(mlua::Error::runtime(format!("cannot read {}: {e}", read.display()))),
+                };
+                let value: serde_json::Value = serde_json::from_str(&text)
+                    .map_err(|e| mlua::Error::runtime(format!("{} is not valid JSON: {e}", read.display())))?;
+                match json_to_lua(lua, &value)? {
+                    Value::Table(table) => Ok(Value::Table(table)),
+                    _ => Ok(Value::Table(lua.create_table()?)),
+                }
+            })?,
+        )?;
+        api.set(
+            "save",
+            lua.create_function(move |_, data: Table| {
+                let json = lua_to_json(&Value::Table(data), 0).map_err(|e| mlua::Error::runtime(format!("cannot save: {e}")))?;
+                let text = json.to_string();
+                if text.len() > DATA_LIMIT {
+                    return Err(mlua::Error::runtime(format!("cannot save: more than {} KiB", DATA_LIMIT / 1024)));
+                }
+                write_data(&file, &text).map_err(|e| mlua::Error::runtime(format!("cannot write {}: {e}", file.display())))?;
+                Ok(true)
+            })?,
+        )?;
 
         globals.set("reskate", api)?;
         Ok(lua)
@@ -596,6 +727,28 @@ impl PluginManager {
     // False when a plugin keeps the message from the other players.
     pub fn chat(&mut self, snapshot: Snapshot, player: &PlayerInfo, text: &str) -> (Vec<Action>, bool) {
         self.dispatch(Event::Chat, snapshot, player, Some(text))
+    }
+
+    // Events about the server rather than a player: the handlers get `text`.
+    fn fire(&mut self, event: Event, snapshot: Snapshot, text: &str) -> Vec<Action> {
+        let handlers: Vec<(usize, Function)> =
+            self.core.borrow().events.iter().filter(|(e, _, _)| *e == event).map(|(_, p, f)| (*p, f.clone())).collect();
+        if handlers.is_empty() {
+            return Vec::new();
+        }
+        self.begin(snapshot);
+        for (plugin, handler) in handlers {
+            self.call::<()>(plugin, &handler, text.to_string());
+        }
+        self.finish()
+    }
+    // The server changed to `map` (its name as players see it).
+    pub fn map(&mut self, snapshot: Snapshot, map: &str) -> Vec<Action> {
+        self.fire(Event::Map, snapshot, map)
+    }
+    // The server is shutting down or restarting; `reason` as players are told.
+    pub fn stop(&mut self, snapshot: Snapshot, reason: &str) -> Vec<Action> {
+        self.fire(Event::Stop, snapshot, reason)
     }
 
     // Advances the plugins' clock; true when a timer or automatic message is due.
