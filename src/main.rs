@@ -461,7 +461,6 @@ fn run() -> i32 {
         format!("{} admin(s). Type help for commands.", host.config.admins.len())
     });
 
-    let started = Instant::now();
     let status = if !host.config.status_enabled {
         None
     } else {
@@ -650,7 +649,7 @@ fn run() -> i32 {
         if let Some(server) = &status {
             if now >= next_status {
                 next_status = now + Duration::from_secs(1);
-                server.set(host.status(started.elapsed().as_secs()).to_string());
+                server.set(host.status().to_string());
             }
         }
         if now >= next_advertise {

@@ -8,6 +8,7 @@
 ---@field id string SteamID64 as a string
 ---@field name string In-game name
 ---@field admin boolean Listed in "admins" of ReSkateServer.json
+---@field online_seconds integer Seconds since the player connected (a map change keeps counting)
 
 ---A player table, a SteamID64 (string or number) or the start of one connected player's name.
 ---@alias ReskatePlayerRef ReskatePlayer|string|integer
@@ -17,6 +18,9 @@
 ---@field map string Current map
 ---@field players integer Players online
 ---@field max_players integer Player limit
+---@field password boolean A password is set
+---@field listed boolean Shown in the server browser
+---@field uptime_seconds integer Seconds since the server started
 
 ---@class ReskateCommandOptions
 ---@field description? string Shown by /help <command>
@@ -73,6 +77,8 @@ function reskate.cancel(id) end
 ---@param handler fun(player: ReskatePlayer)
 ---@overload fun(event: "leave", handler: fun(player: ReskatePlayer, reason: string))
 ---@overload fun(event: "chat", handler: fun(player: ReskatePlayer, text: string): boolean?)
+---@overload fun(event: "map", handler: fun(map: string))
+---@overload fun(event: "stop", handler: fun(reason: string))
 function reskate.on(event, handler) end
 
 ---Sends a chat message from the server to everyone. "\n" splits it into lines (up to 12).
@@ -109,3 +115,12 @@ function reskate.run(command) end
 ---Writes "[plugin] text" to the server log.
 ---@param text string
 function reskate.log(text) end
+
+---This plugin's saved data (plugins/data/<plugin>.json), or an empty table if there is none.
+---@return table
+function reskate.load() end
+
+---Saves a table as this plugin's data (up to 1 MiB, no functions; keys are stored as text).
+---@param data table
+---@return boolean saved
+function reskate.save(data) end

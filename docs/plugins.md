@@ -156,6 +156,7 @@ Functions that take or return a player use a table:
 | `id` | string | SteamID64 (a string, so it never loses digits) |
 | `name` | string | in-game name |
 | `admin` | boolean | listed in `admins` of `ReSkateServer.json` |
+| `online_seconds` | integer | seconds since the player connected; a map change keeps counting |
 
 Where a function takes a *player*, you can pass a player table, a SteamID64 (string or number) or
 the start of a connected player's name (it must match exactly one player).
@@ -262,6 +263,8 @@ Stops a timer or automatic message of this plugin. Returns `true` if one was sto
 | `"join"` | `function(player)` | a player finished joining |
 | `"leave"` | `function(player, reason)` | a player left; `reason` as in the log (`"Disconnected."`, kick reason, …) |
 | `"chat"` | `function(player, text)` | a chat message (not `/` commands). **Return `false`** to keep it from the other players |
+| `"map"` | `function(map)` | the server changed map (`map` command or a map vote); `map` is its name as players see it. A map a handler changes to from here gets no event of its own |
+| `"stop"` | `function(reason)` | the server is shutting down or restarting for an update; players are still connected. Save your data here |
 
 Several handlers (also from several plugins) may listen to the same event; each one runs. For
 `"chat"`, the message is blocked if any handler returns `false`. Blocked messages are still written
@@ -291,7 +294,7 @@ A connected player by SteamID64 or the start of their name; `nil` if none or sev
 
 ### `reskate.server()` → table
 
-`{ name = "…", map = "…", players = 12, max_players = 16 }`
+`{ name = "…", map = "…", players = 12, max_players = 16, password = false, listed = true, uptime_seconds = 3600 }`
 
 ### `reskate.format(text)` → string
 
@@ -305,6 +308,24 @@ Runs a **server console command** with console rights, as if typed into the serv
 
 > Be careful: console rights include `admin add`, `ban` and every setting. Only install plugins
 > you trust.
+
+### `reskate.load()` → table
+
+This plugin's saved data, as last passed to `reskate.save`; an empty table if nothing was saved yet.
+Stored in `plugins/data/<plugin>.json`.
+
+### `reskate.save(data)` → `true`
+
+Saves a table as this plugin's data, kept across restarts, updates and `plugins reload`. Raises an
+error (which the log shows) if it cannot. The file is replaced whole, so a crash never leaves half
+of it.
+
+- Values: tables, strings, numbers, booleans. Functions cannot be saved.
+- A table whose keys are exactly `1..n` is saved as a list; any other table's keys are saved as
+  **text**, so `t[5]` comes back as `t["5"]`. Use Steam IDs (`player.id`, already text) as keys.
+- Up to 1 MiB per plugin, tables nested up to 32 deep.
+
+See `examples/plugins/playtime.lua`: time on the server per player, with `/playtime` and `/top`.
 
 ### `reskate.log(text)`
 

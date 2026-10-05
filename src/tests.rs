@@ -465,12 +465,13 @@ fn plugin_snapshot() -> crate::plugins::Snapshot {
     use crate::plugins::{PlayerInfo, Snapshot};
     Snapshot {
         players: vec![
-            PlayerInfo { id: 76561198000000001, name: "Alice".into(), admin: true },
-            PlayerInfo { id: 76561198000000002, name: "Bob".into(), admin: false },
+            PlayerInfo { id: 76561198000000001, name: "Alice".into(), admin: true, online_seconds: 600 },
+            PlayerInfo { id: 76561198000000002, name: "Bob".into(), admin: false, online_seconds: 30 },
         ],
         server: "Test Server".into(),
         map: "San Vansterdam".into(),
         max_players: 16,
+        ..Default::default()
     }
 }
 
@@ -932,12 +933,80 @@ fn status_json_shows_public_facts_only() {
     let mut config = ServerConfig { name: "Status test".into(), max_players: 10, ..Default::default() };
     config.password = "secret".into();
     let host = crate::host::Host::new(config, crate::steam::SteamTransport::new(), Box::new(|_: &str| {}));
-    let status = host.status(42);
+    let status = host.status();
     assert_eq!(status["name"], "Status test");
     assert_eq!((status["players"].as_u64(), status["max_players"].as_u64()), (Some(0), Some(10)));
-    assert_eq!((status["password"].as_bool(), status["uptime_seconds"].as_u64()), (Some(true), Some(42)));
+    assert_eq!((status["password"].as_bool(), status["uptime_seconds"].as_u64()), (Some(true), Some(0)));
     assert_eq!(status["protocol"].as_u64(), Some(u64::from(PROTOCOL_VERSION)));
     assert!(status["player_list"].as_array().is_some_and(|l| l.is_empty()));
     // Never the password itself, and no join code before the server has a Steam ID.
     assert!(!status.to_string().contains("secret") && status["join_code"].is_null());
+}
+
+#[test]
+fn plugins_keep_data_and_hear_map_and_stop() {
+    use crate::plugins::{PlayerInfo, PluginManager};
+    let folder = std::env::temp_dir().join(format!("reskate-plugin-data-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&folder);
+    std::fs::create_dir_all(&folder).unwrap();
+    std::fs::copy("examples/plugins/playtime.lua", folder.join("playtime.lua")).unwrap();
+    std::fs::write(
+        folder.join("store.lua"),
+        r#"
+reskate.command("store", function(p, args, line)
+    if line == "save" then
+        return tostring(reskate.save({ list = { 1, 2, 3 }, name = "x", nested = { deep = true }, [5] = "five", ratio = 0.5 }))
+    elseif line == "bad" then
+        local ok, err = pcall(reskate.save, { f = function() end })
+        return tostring(ok) .. " " .. tostring(err)
+    end
+    local d = reskate.load()
+    if d.list == nil then return "empty" end
+    return table.concat({ #d.list, d.list[3], d.name, tostring(d.nested.deep), d["5"], d.ratio }, ",")
+end)
+reskate.on("map", function(map) reskate.log("map " .. map) end)
+reskate.on("stop", function(reason) reskate.broadcast("bye: " .. reason) end)
+"#,
+    )
+    .unwrap();
+    let mut plugins = PluginManager::default();
+    let all = plugins.load(&folder, 1_000_000_000).join("\n");
+    assert!(all.contains("2 loaded"), "{all}");
+    let snapshot = plugin_snapshot();
+    let alice = snapshot.players[0].clone();
+    let store = |plugins: &PluginManager, line: &str| plugins.command(plugin_snapshot(), &alice, "store", line).unwrap().1;
+    assert_eq!(store(&plugins, "load"), "empty");
+    assert_eq!(store(&plugins, "save"), "true");
+    assert_eq!(store(&plugins, "load"), "3,3,x,true,five,0.5");
+    assert!(store(&plugins, "bad").starts_with("false") && store(&plugins, "bad").contains("cannot be saved"));
+    assert_eq!(store(&plugins, "load"), "3,3,x,true,five,0.5"); // a failed save keeps the old data
+
+    // Map and stop events reach the handlers.
+    assert_eq!(plugin_text(&plugins.map(snapshot.clone(), "Isle of Grom")), vec!["log: [store] map Isle of Grom"]);
+    let stop = plugin_text(&plugins.stop(snapshot.clone(), "The server is shutting down."));
+    assert!(stop.contains(&"all: bye: The server is shutting down.".to_string()), "{stop:?}");
+
+    // Playtime: Alice joins at 0 s and is online 600 s; it is saved and survives a reload.
+    let mut joining = alice.clone();
+    joining.online_seconds = 0;
+    plugins.join(snapshot.clone(), &joining);
+    let (_, reply) = plugins.command(snapshot.clone(), &alice, "playtime", "").unwrap();
+    assert_eq!(reply, "Alice: 10m");
+    let mut later = plugin_snapshot();
+    later.players[0].online_seconds = 3900;
+    let (_, reply) = plugins.command(later.clone(), &alice, "top", "").unwrap();
+    assert!(reply.starts_with("1. Alice 1h 05m"), "{reply}");
+    plugins.stop(later.clone(), "restart");
+    let saved = std::fs::read_to_string(folder.join("data").join("playtime.json")).unwrap();
+    assert!(saved.contains("76561198000000001") && saved.contains("3900"), "{saved}");
+    // Reloaded while Alice is still online: her time so far is not counted twice.
+    let mut reloaded = PluginManager::default();
+    reloaded.load(&folder, 2_000_000_000);
+    let (_, reply) = reloaded.command(later.clone(), &alice, "playtime", "alice").unwrap();
+    assert_eq!(reply, "Alice: 1h 05m");
+    let leaving = PlayerInfo { online_seconds: 4500, ..alice.clone() };
+    reloaded.leave(later, &leaving, "Disconnected.");
+    let (_, reply) = reloaded.command(plugin_snapshot(), &alice, "playtime", "").unwrap();
+    assert_eq!(reply, "Alice: 1h 15m");
+    let _ = std::fs::remove_dir_all(&folder);
 }
