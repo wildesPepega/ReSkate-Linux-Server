@@ -1,0 +1,27 @@
+# Every pull request: the tests, and the release package built exactly as a release builds it.
+# A PR is only merged with this green (the update routine waits for it).
+name: CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-build
+      - name: Tests
+        run: cargo test --release
+      - name: Package (glibc 2.31)
+        run: ./package-linux.sh
+      - name: The package starts and names its version
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          ./dist/ReSkateServer-linux-x64/ReSkateServer --version | tee /dev/stderr | grep -qx "ReSkateServer $version"
