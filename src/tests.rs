@@ -39,7 +39,7 @@ fn header_layout_matches_the_game() {
     let raw = encode(&base(kind::AWAY), false);
     assert_eq!(raw.len(), PACKET_HEADER_SIZE);
     assert_eq!(&raw[..4], b"RMP1");
-    assert_eq!(u16::from_le_bytes([raw[4], raw[5]]), 38);
+    assert_eq!(u16::from_le_bytes([raw[4], raw[5]]), 39);
     assert_eq!(u16::from_le_bytes([raw[6], raw[7]]), kind::AWAY);
     assert_eq!(u32::from_le_bytes(raw[8..12].try_into().unwrap()), 0);
     let p = decode(&raw).unwrap();
@@ -781,4 +781,106 @@ fn embed_time_stamps_are_iso_8601() {
     assert_eq!(crate::discord::iso8601(0), "1970-01-01T00:00:00Z");
     assert_eq!(crate::discord::iso8601(1_791_106_869), "2026-10-04T09:41:09Z");
     assert_eq!(crate::discord::iso8601(951_782_400), "2000-02-29T00:00:00Z");
+}
+
+#[test]
+fn physics_extras_round_trip_and_limits() {
+    let mut p = base(kind::PHYSICS_EXTRAS);
+    p.extras = vec![1, 2, 3, 250];
+    let raw = encode(&p, false);
+    assert_eq!(decode(&raw).unwrap().extras, p.extras);
+    // A length that does not match what follows, or more than the limit, is refused.
+    let mut short = raw.clone();
+    short.pop();
+    assert!(decode(&short).is_none());
+    p.extras = vec![0; MAX_PHYSICS_EXTRAS];
+    assert_eq!(decode(&encode(&p, false)).unwrap().extras.len(), MAX_PHYSICS_EXTRAS);
+}
+
+#[test]
+fn relay_budgets_hold_one_source_to_what_a_game_sends() {
+    let mut outfit = OutfitBudget::default();
+    for _ in 0..OUTFIT_BURST {
+        assert!(outfit.accept(1_000_000));
+    }
+    assert!(!outfit.accept(2_000_000));
+    assert!(outfit.accept(6_000_000));
+
+    let mut sound = SoundBudget::default();
+    assert!(sound.accept(1_000_000, 400));
+    assert!(!sound.accept(1_100_000, 1));
+    assert!(sound.accept(2_000_000, 4));
+    let mut packets = SoundBudget::default();
+    let mut accepted = 0;
+    while packets.accept(1_000_000, 0) {
+        accepted += 1;
+    }
+    assert_eq!(accepted, TICK_RATES[3] + 30);
+}
+
+#[test]
+fn join_backoff_grows_and_is_forgotten() {
+    let mut backoff = JoinBackoff::default();
+    let start = 10_000_000;
+    // The first failure may try again at once; the second waits 5 s, the third 10 s.
+    assert_eq!(backoff.failed(PLAYER, start), 1);
+    assert!(!backoff.waiting(PLAYER, start));
+    assert_eq!(backoff.failed(PLAYER, start), 2);
+    assert!(backoff.waiting(PLAYER, start + 4_999_999) && !backoff.waiting(PLAYER, start + 5_000_000));
+    assert_eq!(backoff.failed(PLAYER, start), 3);
+    assert!(backoff.waiting(PLAYER, start + 9_999_999) && !backoff.waiting(PLAYER, start + 10_000_000));
+    assert!(!backoff.waiting(OTHER, start));
+    // Never longer than ten minutes.
+    for _ in 0..20 {
+        backoff.failed(PLAYER, start);
+    }
+    assert!(backoff.waiting(PLAYER, start + 599_000_000) && !backoff.waiting(PLAYER, start + 600_000_000));
+    // Joining clears it; half an hour without a failure forgets it.
+    backoff.joined(PLAYER);
+    assert!(!backoff.waiting(PLAYER, start));
+    backoff.failed(OTHER, start);
+    backoff.failed(OTHER, start);
+    let later = start + 31 * 60 * 1_000_000;
+    assert_eq!(backoff.failed(OTHER, later), 1);
+    backoff.prune(later + 31 * 60 * 1_000_000);
+    assert!(!backoff.waiting(OTHER, later));
+}
+
+#[test]
+fn receive_budget_counts_by_arrival() {
+    // A server held up for five seconds reads five seconds of normal traffic in one go: counted
+    // by arrival, that is never a flood.
+    let mut budget = ReceiveBudget::default();
+    for second in 0..5u64 {
+        for i in 0..100u64 {
+            assert!(budget.accept(1_000_000 + second * 1_000_000 + i * 10_000, 100, 1));
+        }
+    }
+    // A packet read after a later one (another lane) is counted in the current second.
+    assert!(budget.accept(5_500_000, 100, 1));
+    assert!(budget.accept(1_000_000, 100, 1));
+}
+
+#[test]
+fn server_tags_keep_whole_characters() {
+    let mut a = crate::steam::Advertisement {
+        name: "Café, Bar".into(),
+        map: "San Vanelona".into(),
+        players: 3,
+        max_players: 32,
+        password: false,
+        listed: true,
+        secret: 0xabc,
+    };
+    let tags = String::from_utf8(crate::steam::server_tags(&a)).unwrap();
+    assert!(tags.starts_with(&format!("reskate,v{PROTOCOL_VERSION},")), "{tags}");
+    assert!(tags.ends_with(",nCafé  Bar"), "{tags}");
+    // A name too long for the tags is cut, never through a character, and the list stays
+    // under Steam's 128 byte limit.
+    a.name = "é".repeat(100);
+    let tags = crate::steam::server_tags(&a);
+    assert!(tags.len() <= 127);
+    let text = String::from_utf8(tags).unwrap();
+    let name = &text[text.rfind(",n").unwrap() + 2..];
+    assert!(!name.is_empty() && name.chars().all(|c| c == 'é'));
 }

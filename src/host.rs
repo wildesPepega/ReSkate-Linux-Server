@@ -115,6 +115,8 @@ struct Guest {
     received_voice: bool,
     voice_sequence: u32,
     voice_budget: VoiceBudget,
+    outfit_budget: OutfitBudget,
+    sound_budget: SoundBudget,
     chat_rate: ChatRate,
     admin_budget: ChatBudget,
     throwdown_budget: ChatBudget,
@@ -166,6 +168,8 @@ impl Default for Guest {
             received_voice: false,
             voice_sequence: 0,
             voice_budget: VoiceBudget::default(),
+            outfit_budget: OutfitBudget::default(),
+            sound_budget: SoundBudget::default(),
             chat_rate: ChatRate::default(),
             admin_budget: ChatBudget::default(),
             throwdown_budget: ChatBudget::default(),
@@ -241,6 +245,7 @@ pub struct Host {
     party_revision: u64,
     guests: BTreeMap<u64, Box<Guest>>,
     kicked: BTreeSet<u64>,
+    join_backoff: JoinBackoff, // Steam IDs whose attempts to join keep failing
     password: Option<PasswordKey>,
     id: u64,
     secret: u64,
@@ -283,6 +288,7 @@ impl Host {
             party_revision: 0,
             guests: BTreeMap::new(),
             kicked: BTreeSet::new(),
+            join_backoff: JoinBackoff::default(),
             password: None,
             id: 0,
             secret: 0,
@@ -361,6 +367,36 @@ impl Host {
     fn name_of(&self, id: u64) -> String {
         self.guests.get(&id).map(|g| guest_name(g)).unwrap_or_default()
     }
+    // The name a joining player is known by: the one their game sent, which the server cannot
+    // check against Steam, made safe to show and to type. Never blank, never the server's or
+    // ReSkate's own, never read as a SteamID64 by kick or ban, never the same as another player's.
+    fn player_name(&self, wanted: &str, id: u64) -> String {
+        let fallback = format!("Player {}", id % 10000);
+        let mut name = prefix(&clean_roster_name(wanted), MAX_MEMBER_NAME).to_string();
+        // Names show in every player's roster, nametags and party UI.
+        if contains_bad_words(&name) {
+            name = mask_bad_words(&name);
+        }
+        let folded = lower(&name);
+        let (first, _) = split(&name);
+        let digits = !first.is_empty() && first.bytes().all(|c| c.is_ascii_digit());
+        if name.is_empty() || folded == "server" || folded == "reskate" || folded == lower(&self.config.name) {
+            name = fallback;
+        } else if digits {
+            name = format!("Player {name}");
+        }
+        let taken = |candidate: &str| {
+            self.guests.iter().any(|(&other, g)| other != id && g.handshaken && lower(&g.member.name) == lower(candidate))
+        };
+        let mut unique = name.clone();
+        let mut copy = 2;
+        while taken(&unique) && copy < 1000 {
+            unique = format!("{name} ({copy})");
+            copy += 1;
+        }
+        prefix(&clean_roster_name(&unique), 128).to_string()
+    }
+
     fn handshaken(&self, id: u64) -> bool {
         self.guests.get(&id).is_some_and(|g| g.handshaken)
     }
@@ -477,6 +513,11 @@ impl Host {
             None => g.sender.prepare(p),
             Some((raw, wire)) => g.sender.prepare_with(p, raw, wire),
         };
+        // A packet that cannot be built for anyone (an outfit too big to relay) is its source's
+        // fault, never this recipient's: nothing is sent, and the recipient is not dropped.
+        if update.bytes.is_empty() {
+            return true;
+        }
         // A stream and its reliable delta references must always use the same lane.
         if !transport.send(g.member.id, &update.bytes, reliable || update.establishes_baseline(), fresh, traffic_lane(p.kind)) {
             return false;
@@ -779,9 +820,16 @@ impl Host {
             let player = PlayerInfo { id, name: name.clone(), admin: self.is_admin(id) };
             let actions = self.plugins.leave(self.plugin_snapshot(), &player, reason);
             self.apply_plugin_actions(actions);
+        } else {
+            // Never admitted: it held a player slot meanwhile, so it shows in the log, and an ID
+            // that keeps failing waits longer each time before its connection is taken again.
+            let failures = self.join_backoff.failed(id, self.now);
+            let attempt = if failures > 1 { format!(", attempt {failures}") } else { String::new() };
+            self.log(&format!("[join] {id} did not finish joining ({reason}){attempt}"));
         }
         self.party_left(id, &name);
-        self.vote_cooldowns.remove(&id);
+        // Their vote cooldown stays (tick() drops it once it has run out): leaving and coming
+        // back does not let a player start another vote sooner.
         // One voter fewer, or the player a kick vote was about: counted in tick().
         self.vote_recount = true;
     }
@@ -792,13 +840,13 @@ impl Host {
         let source = guest!(self, id);
         let accepted = match p.kind {
             kind::COSMETICS => {
-                let accepted = source.appearance.push(p);
+                let accepted = source.outfit_budget.accept(now) && source.appearance.push(p);
                 if accepted {
                     source.cosmetic_packet = encode_wire(p);
                 }
                 accepted
             }
-            kind::AUDIO => source.audio.push(p, now),
+            kind::AUDIO => source.sound_budget.accept(now, p.audio.len()) && source.audio.push(p, now),
             kind::POSE => source.poses.push_validated(p, now),
             _ => false,
         };
@@ -819,11 +867,13 @@ impl Host {
         true
     }
 
-    fn receive(&mut self, peer: u64, bytes: &[u8]) {
+    // `arrived`: when Steam received the message (TransportMessage::arrived), 0 if unknown.
+    fn receive(&mut self, peer: u64, bytes: &[u8], arrived: u64) {
         let now = self.now;
         let world = self.world;
         let Some(link) = self.guests.get_mut(&peer) else { return };
-        if !link.budget.accept(now, bytes.len(), 1) {
+        // Counted by arrival: after the server was held up, everyone's packets are read at once.
+        if !link.budget.accept(if arrived != 0 { arrived } else { now }, bytes.len(), 1) {
             return self.drop_guest(peer, "Peer exceeded the multiplayer packet limit.");
         }
         let mut missing = false;
@@ -986,7 +1036,7 @@ impl Host {
         match p.kind {
             kind::ROSTER => return self.drop_guest(peer, "Only the server may publish the player roster."),
             kind::TELEPORT => return self.drop_guest(peer, "Only the server may teleport players."),
-            kind::PHYSICS_TUNING => return, // a listen host's; the server's is the game's own
+            kind::PHYSICS_TUNING | kind::PHYSICS_EXTRAS => return, // a listen host's; the server's physics are the game's own
             _ => {}
         }
         let _ = id;
@@ -1143,13 +1193,12 @@ impl Host {
         let joined = !link.handshaken;
         link.member.epoch = p.epoch;
         if joined {
-            link.member.name = if p.text.is_empty() { format!("Player {}", peer % 10000) } else { p.text.clone() };
-            link.member.name = prefix(&link.member.name, 128).to_string();
-            // Names show in every player's roster, nametags and party UI.
-            if contains_bad_words(&link.member.name) {
-                link.member.name = mask_bad_words(&link.member.name);
-            }
+            let wanted = p.text.clone();
+            let name = self.player_name(&wanted, peer);
+            guest!(self, peer).member.name = name;
+            self.join_backoff.joined(peer);
         }
+        let link = guest!(self, peer);
         link.handshaken = true;
         link.world_ready = true;
         link.travel_since = 0;
@@ -1334,6 +1383,10 @@ impl Host {
                 self.transport.disconnect(link.id, "You are banned from this server.");
                 continue;
             }
+            if !self.guests.contains_key(&link.id) && self.join_backoff.waiting(link.id, now) {
+                self.transport.disconnect(link.id, "Too many failed attempts to join. Wait a little and try again.");
+                continue;
+            }
             if !self.guests.contains_key(&link.id) {
                 if !individual_steam_id(link.id) || self.guests.len() >= self.config.max_players as usize {
                     self.transport.disconnect(link.id, "The server is full.");
@@ -1350,7 +1403,7 @@ impl Host {
             }
         }
         for message in self.transport.receive() {
-            self.receive(message.peer, &message.bytes);
+            self.receive(message.peer, &message.bytes, message.arrived);
         }
         self.receive_cosmetics();
         let ids: Vec<u64> = self.guests.keys().copied().collect();
@@ -1410,6 +1463,8 @@ impl Host {
         if self.vote.as_ref().is_some_and(|v| now >= v.ends) {
             self.check_vote(true);
         }
+        self.vote_cooldowns.retain(|_, until| now < *until);
+        self.join_backoff.prune(now);
         if self.plugins.due(now) {
             let snapshot = self.plugin_snapshot();
             let actions = self.plugins.tick(now, snapshot);
@@ -1421,6 +1476,10 @@ impl Host {
     // A SteamID64 (optionally followed by the player's session epoch, as the in-game menu
     // sends it), or the start of one connected player's name.
     fn target(&self, text: &str) -> Option<u64> {
+        // Every name starts with "": a bare "kick" must not pick the only player.
+        if trim(text).is_empty() {
+            return None;
+        }
         let (first, _) = split(text);
         if let Some(id) = number(first) {
             return self.guests.contains_key(&id).then_some(id);
@@ -1573,7 +1632,12 @@ impl Host {
                 text
             }
             "map" => {
-                if argument.is_empty() || !valid_map_destination(&map_destination(argument)) {
+                // The map as it will be stored must still name a destination, or the server could
+                // not tell players where to go, nor start again.
+                if argument.is_empty()
+                    || !valid_map_destination(&map_destination(argument))
+                    || !valid_map_destination(&map_destination(&map_setting(argument)))
+                {
                     return format!("No single map is called \"{argument}\". Type maps for the list.");
                 }
                 if map_hash(&map_destination(argument)) == self.map {
@@ -2438,7 +2502,7 @@ impl Host {
         }
         // Admins run any server command from chat, as they do with "mp server".
         if self.is_admin(id) {
-            self.log(&format!("[admin] {}: {line}", self.name_of(id)));
+            self.log(&format!("[admin] {}: {}", self.name_of(id), loggable(line)));
             let answer = self.command(line, id);
             if self.guests.contains_key(&id) {
                 self.reply(id, if answer.is_empty() { "Done." } else { &answer });

@@ -1,14 +1,19 @@
 // The ReSkate multiplayer wire protocol (Extension/Multiplayer/Net/protocol.{h,cpp} and the
-// session model headers it uses). Byte for byte what the game speaks: protocol version 38.
+// session model headers it uses). Byte for byte what the game speaks: protocol version 39.
 use crate::world::{park_id, world_layers, ParkChoices, PARK_FAMILIES, PARK_LOTS, WORLD_LAYER_MODES};
 
 pub const MAX_SKATER_BONES: usize = 512;
 pub const MAX_BOARD_BONES: usize = 64;
 pub const MAX_PACKET: usize = 24576;
 pub const PACKET_HEADER_SIZE: usize = 64;
-pub const PROTOCOL_VERSION: u16 = 38;
+pub const PROTOCOL_VERSION: u16 = 39;
 pub const MAX_THROWDOWN_MESSAGE: usize = 4096;
 pub const MAX_PHYSICS_TUNING: usize = 16384;
+// A host's physics beyond its tuning (Engine/Game/Multiplayer/session_physics.h).
+pub const MAX_PHYSICS_EXTRAS: usize = 4096;
+// The largest encoded outfit (Remote/cosmetics.h): well under the packet limit, so a relayed
+// copy with its reference marker always fits again.
+pub const MAX_APPEARANCE_BYTES: usize = 16384;
 pub const SERVER_VOTE_MAP: u8 = 1;
 pub const SERVER_VOTE_KICK: u8 = 2;
 pub const SERVER_VOTE_TIME: u8 = 4;
@@ -93,6 +98,8 @@ pub mod kind {
     pub const PHYSICS_TUNING: u16 = 27;
     pub const PARTY: u16 = 28;
     pub const SCORING: u16 = 29;
+    // A host's physics its tuning does not carry (the trainer's); a dedicated server never sends it.
+    pub const PHYSICS_EXTRAS: u16 = 30;
 }
 
 // Packet::party_action (see PartyAction in protocol.h).
@@ -270,6 +277,81 @@ pub fn valid_voice(voice: &VoiceData) -> bool {
         && voice.distance.is_finite()
         && (voice.distance == 0.0 || (voice.distance >= MIN_HEARING_DISTANCE && voice.distance <= MAX_HEARING_DISTANCE))
 }
+// What one player's game sends of each relayed stream, with room to spare
+// (Extension/Multiplayer/Session/room.h): the server passes on no more than this from anyone.
+// Outfits are captured twice a second and sent when changed; counted over five seconds.
+pub const OUTFIT_BURST: u32 = 12;
+#[derive(Clone, Default)]
+pub struct OutfitBudget {
+    since: u64,
+    count: u32,
+}
+impl OutfitBudget {
+    pub fn accept(&mut self, now: u64) -> bool {
+        if now < self.since || now - self.since >= 5_000_000 {
+            self.since = now;
+            self.count = 0;
+        }
+        self.count += 1;
+        self.count <= OUTFIT_BURST
+    }
+}
+// Skater sound: at most one packet per network tick, a few samples each.
+#[derive(Clone, Default)]
+pub struct SoundBudget {
+    since: u64,
+    packets: u32,
+    samples: usize,
+}
+impl SoundBudget {
+    pub fn accept(&mut self, now: u64, count: usize) -> bool {
+        if now < self.since || now - self.since >= 1_000_000 {
+            self.since = now;
+            self.packets = 0;
+            self.samples = 0;
+        }
+        if self.packets >= TICK_RATES[3] + 30 || self.samples + count > 400 {
+            return false;
+        }
+        self.packets += 1;
+        self.samples += count;
+        true
+    }
+}
+// A connection that never finished joining (timed out, wrong password or code) may try again at
+// once the first time; after that each failure makes its Steam ID wait longer before the server
+// takes its connection again, so one account cannot hold a player slot or try passwords over
+// and over.
+#[derive(Clone, Default)]
+pub struct JoinBackoff {
+    entries: std::collections::BTreeMap<u64, (u64, u64, u32)>, // until, last, failures
+}
+impl JoinBackoff {
+    const FORGET_US: u64 = 30 * 60 * 1_000_000;
+    const LONGEST_US: u64 = 10 * 60 * 1_000_000;
+    // Notes a failed attempt; returns how many this ID made lately.
+    pub fn failed(&mut self, id: u64, now: u64) -> u32 {
+        let entry = self.entries.entry(id).or_insert((0, 0, 0));
+        if entry.1 != 0 && now >= entry.1 && now - entry.1 > Self::FORGET_US {
+            entry.2 = 0;
+        }
+        entry.2 += 1;
+        entry.1 = now;
+        let wait = if entry.2 < 2 { 0 } else { Self::LONGEST_US.min(5_000_000u64 << (entry.2 - 2).min(8)) };
+        entry.0 = now + wait;
+        entry.2
+    }
+    pub fn waiting(&self, id: u64, now: u64) -> bool {
+        self.entries.get(&id).is_some_and(|e| now < e.0)
+    }
+    pub fn joined(&mut self, id: u64) {
+        self.entries.remove(&id);
+    }
+    pub fn prune(&mut self, now: u64) {
+        self.entries.retain(|_, e| !(now >= e.1 && now - e.1 > Self::FORGET_US));
+    }
+}
+
 #[derive(Clone, Default)]
 pub struct VoiceBudget {
     since: u64,
@@ -283,7 +365,8 @@ impl VoiceBudget {
             self.bytes = 0;
             self.packets = 0;
         }
-        if size == 0 || size > MAX_VOICE_BYTES || self.packets >= 80 || self.bytes + size as u64 > 96 * 1024 {
+        // Steam's compressed voice is a few kilobytes a second: this leaves several times that.
+        if size == 0 || size > MAX_VOICE_BYTES || self.packets >= 80 || self.bytes + size as u64 > 32 * 1024 {
             return false;
         }
         self.packets += 1;
@@ -425,6 +508,7 @@ pub struct Packet {
     pub throwdown: Vec<u8>,
     pub teleport: [f32; 3],
     pub tuning: Vec<u8>,
+    pub extras: Vec<u8>,
     pub party_action: u8,
     pub party_player: u64,
     pub scoring: u64,
@@ -476,6 +560,7 @@ impl Default for Packet {
             throwdown: Vec::new(),
             teleport: [0.0; 3],
             tuning: Vec::new(),
+            extras: Vec::new(),
             party_action: party_action::LEAVE,
             party_player: 0,
             scoring: 0,
@@ -584,7 +669,7 @@ pub fn valid_appearance(a: &Appearance) -> bool {
             size += 8 + item.asset.len() + item.parameters.len() * 4;
         }
     }
-    size <= MAX_PACKET
+    size <= MAX_APPEARANCE_BYTES
 }
 
 pub fn valid_network_object(object: &NetworkObject) -> bool {
@@ -733,6 +818,12 @@ pub fn valid_admin_text(text: &[u8]) -> bool {
 
 // The message a player typed, made valid: control characters and broken UTF-8 dropped,
 // surrounding blanks trimmed, cut to the byte limit on a character boundary.
+// A player's name as a roster carries it: cleaned like chat, at most 128 bytes.
+pub fn clean_roster_name(text: &str) -> String {
+    let name = clean_chat_text(text);
+    crate::text::prefix(&name, 128).to_string()
+}
+
 pub fn clean_chat_text(text: &str) -> String {
     let bytes = text.as_bytes();
     let mut result: Vec<u8> = Vec::new();
@@ -957,6 +1048,9 @@ pub fn encode(p: &Packet, compact_pose: bool) -> Vec<u8> {
     if p.kind == kind::PHYSICS_TUNING && (p.source == 0 || p.tuning.len() > MAX_PHYSICS_TUNING) {
         panic!("Invalid physics tuning");
     }
+    if p.kind == kind::PHYSICS_EXTRAS && (p.source == 0 || p.extras.len() > MAX_PHYSICS_EXTRAS) {
+        panic!("Invalid physics extras");
+    }
     if p.kind == kind::PARTY && (p.source == 0 || !valid_party_request(p.party_action, p.party_player)) {
         panic!("Invalid party message");
     }
@@ -1019,6 +1113,7 @@ pub fn encode(p: &Packet, compact_pose: bool) -> Vec<u8> {
                 | kind::PHYSICS_TUNING
                 | kind::PARTY
                 | kind::SCORING
+                | kind::PHYSICS_EXTRAS
         );
     if !known {
         panic!("Unknown packet kind");
@@ -1151,6 +1246,10 @@ pub fn encode(p: &Packet, compact_pose: bool) -> Vec<u8> {
     if p.kind == kind::PHYSICS_TUNING {
         w.int(p.tuning.len() as u64, 2);
         w.raw(&p.tuning);
+    }
+    if p.kind == kind::PHYSICS_EXTRAS {
+        w.int(p.extras.len() as u64, 2);
+        w.raw(&p.extras);
     }
     if p.kind == kind::SCORING {
         w.int(p.scoring, 8);
@@ -1555,6 +1654,12 @@ pub fn decode(bytes: &[u8]) -> Option<Packet> {
             return None;
         }
         p.tuning = r.take(length).to_vec();
+    } else if p.kind == kind::PHYSICS_EXTRAS {
+        let length = r.int(2)? as usize;
+        if p.source == 0 || length > MAX_PHYSICS_EXTRAS || length != r.left() {
+            return None;
+        }
+        p.extras = r.take(length).to_vec();
     } else if p.kind == kind::SCORING {
         p.scoring = r.int(8)?;
         let length = r.int(2)? as usize;
@@ -1822,7 +1927,11 @@ pub fn advance_pose_deadline(next: &mut u64, now: u64, interval: u64) {
 
 // After a network hiccup Steam hands over everything a player sent meanwhile at once, which
 // can overrun one second's budget. Only a player over budget for this many seconds in a row is
-// treated as flooding (the C++ server drops on the first second).
+// treated as flooding (the C++ server drops on the first second). Packets are counted by when
+// they arrived (TransportMessage::arrived), not when they are read: a server held up for a few
+// seconds reads everything that arrived meanwhile at once. They are not always read in arrival
+// order (Steam's lanes are read one after another): one from before the second being counted
+// is counted in it.
 pub const RECEIVE_OVER_SECONDS: u32 = 4;
 
 #[derive(Clone, Default)]
@@ -1834,15 +1943,15 @@ pub struct ReceiveBudget {
     over_seconds: u32,
 }
 impl ReceiveBudget {
-    pub fn accept(&mut self, now: u64, size: usize, sources: u64) -> bool {
+    pub fn accept(&mut self, when: u64, size: usize, sources: u64) -> bool {
         if sources == 0 || sources > MAX_REMOTE_PLAYERS as u64 {
             return false;
         }
-        if now.wrapping_sub(self.since) >= 1_000_000 {
+        if when > self.since && when - self.since >= 1_000_000 {
             // A gap of more than a second between packets ends a run of busy seconds.
-            let consecutive = now.wrapping_sub(self.since) < 2_000_000;
+            let consecutive = when - self.since < 2_000_000;
             self.over_seconds = if self.over && consecutive { self.over_seconds + 1 } else { 0 };
-            self.since = now;
+            self.since = when;
             self.bytes = 0;
             self.packets = 0;
             self.over = false;
