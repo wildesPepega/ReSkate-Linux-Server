@@ -139,6 +139,8 @@ const SEND_UNRELIABLE_NO_DELAY: c_int = 5;
 const SEND_RELIABLE: c_int = 8;
 const SEND_RELIABLE_NO_NAGLE: c_int = 9;
 const CONFIG_SEND_RATE_MAX: i32 = 11;
+const CONFIG_P2P_TRANSPORT_ICE_ENABLE: i32 = 104;
+const ICE_ENABLE_DISABLE: u32 = 0;
 const CONFIG_CALLBACK_STATUS_CHANGED: i32 = 201;
 const CONFIG_INT32: i32 = 1;
 const CONFIG_PTR: i32 = 5;
@@ -205,21 +207,10 @@ pub struct Advertisement {
 // Tags are comma separated, so a name loses its commas; the whole list must stay under
 // Steam's 128 byte limit.
 fn tag_text(text: &str, limit: usize) -> Vec<u8> {
-    let mut result = Vec::new();
-    for &c in text.as_bytes() {
-        if result.len() >= limit {
-            break;
-        }
-        result.push(if c == b',' { b' ' } else { c });
-    }
-    // Never end inside a UTF-8 sequence.
-    while result.last().is_some_and(|&c| c & 0xC0 == 0x80) {
-        result.pop();
-    }
-    if result.last().is_some_and(|&c| c & 0xC0 == 0xC0) {
-        result.pop();
-    }
-    result
+    let text = text.replace(',', " ");
+    // Cut at the limit only, and never through a character: a whole last character is kept
+    // ("Café" stays "Café"), one the limit splits is dropped.
+    crate::text::prefix(&text, limit).as_bytes().to_vec()
 }
 
 pub fn server_tags(a: &Advertisement) -> Vec<u8> {
@@ -431,6 +422,10 @@ pub struct TransportPeer {
 pub struct TransportMessage {
     pub peer: u64,
     pub bytes: Vec<u8>,
+    // When Steam received it, in microseconds on a clock of its own (only differences mean
+    // anything); 0 when unknown. A server held up for a while reads everything that arrived
+    // meanwhile in one go: this is what tells that from a flood.
+    pub arrived: u64,
 }
 
 #[derive(Clone, Copy)]
@@ -675,8 +670,10 @@ impl SteamTransport {
         Ok(())
     }
 
-    fn options() -> [ConfigValue; 2] {
-        // The callback, and this connection's send-rate ceiling (Steam keeps congestion control).
+    fn options() -> [ConfigValue; 3] {
+        // The callback, this connection's send-rate ceiling (Steam keeps congestion control),
+        // and no ICE: every connection goes through Steam's relays, so no player's IP address
+        // is shared with anyone, whatever their own Steam setting is.
         [
             ConfigValue {
                 value: CONFIG_CALLBACK_STATUS_CHANGED,
@@ -684,6 +681,7 @@ impl SteamTransport {
                 data: status_changed as extern "C" fn(*mut StatusChanged) as usize as u64,
             },
             ConfigValue { value: CONFIG_SEND_RATE_MAX, data_type: CONFIG_INT32, data: u64::from((1024 * 1024) as u32) },
+            ConfigValue { value: CONFIG_P2P_TRANSPORT_ICE_ENABLE, data_type: CONFIG_INT32, data: u64::from(ICE_ENABLE_DISABLE) },
         ]
     }
 
@@ -949,7 +947,8 @@ impl SteamTransport {
                     let data = (*message).data;
                     if size > 0 && size as usize <= MAX_PACKET && !data.is_null() {
                         let bytes = std::slice::from_raw_parts(data as *const u8, size as usize).to_vec();
-                        result.push(TransportMessage { peer: id, bytes });
+                        let arrived = u64::try_from((*message).time_received).unwrap_or(0);
+                        result.push(TransportMessage { peer: id, bytes, arrived });
                     }
                     (api.release_message)(message);
                 }
