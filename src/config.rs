@@ -44,6 +44,7 @@ pub struct ServerConfig {
     pub welcome: String,
     pub listed: bool,
     pub auto_update: bool,
+    pub global_bans: bool, // turn away players the ReSkate team has banned (src/global_bans.rs)
     pub activity_log: bool,
     pub announce_throwdowns: bool,
     pub parties: bool,
@@ -93,6 +94,7 @@ impl Default for ServerConfig {
             welcome: String::new(),
             listed: true,
             auto_update: true,
+            global_bans: true,
             activity_log: true,
             announce_throwdowns: true,
             parties: true,
@@ -144,6 +146,7 @@ fn to_json(c: &ServerConfig) -> Value {
     root.insert("welcome".into(), c.welcome.clone().into());
     root.insert("listed".into(), c.listed.into());
     root.insert("auto_update".into(), c.auto_update.into());
+    root.insert("global_bans".into(), c.global_bans.into());
     root.insert("activity_log".into(), c.activity_log.into());
     root.insert("announce_throwdowns".into(), c.announce_throwdowns.into());
     root.insert("parties".into(), c.parties.into());
@@ -311,6 +314,7 @@ pub fn load_config(file: &Path, added: &mut Vec<String>) -> Result<ServerConfig,
     c.welcome = read_string(&root, "welcome", &c.welcome)?;
     c.listed = read_bool(&root, "listed", c.listed)?;
     c.auto_update = read_bool(&root, "auto_update", c.auto_update)?;
+    c.global_bans = read_bool(&root, "global_bans", c.global_bans)?;
     c.activity_log = read_bool(&root, "activity_log", c.activity_log)?;
     c.announce_throwdowns = read_bool(&root, "announce_throwdowns", c.announce_throwdowns)?;
     c.parties = read_bool(&root, "parties", c.parties)?;

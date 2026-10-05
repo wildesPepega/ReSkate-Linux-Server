@@ -9,6 +9,7 @@ mod activity;
 mod buffers;
 mod config;
 mod discord;
+mod global_bans;
 mod host;
 mod objects;
 mod party;
@@ -476,6 +477,15 @@ fn run() -> i32 {
         }
     };
     let mut next_status = Instant::now();
+    // The backend's ban list (src/global_bans.rs): read now and every ten minutes, a minute after
+    // a failure. Said when it changes, not every ten minutes.
+    let mut ban_check: Option<Receiver<Result<Vec<u64>, String>>> = None;
+    let mut next_ban_check = Instant::now();
+    let mut last_bans: Option<Vec<u64>> = None;
+    let mut bans_unread = false;
+    if !host.config.global_bans {
+        write_log("Global bans are off (\"global_bans\": false): only this server's own bans apply.");
+    }
 
     let input = console_input();
     let mut next_advertise = Instant::now();
@@ -644,6 +654,42 @@ fn run() -> i32 {
                 }
                 staged = None;
                 install_now = false;
+            }
+        }
+        if host.config.global_bans && ban_check.is_none() && now >= next_ban_check {
+            let (sender, receiver) = channel();
+            std::thread::spawn(move || {
+                let _ = sender.send(global_bans::read_ban_list());
+            });
+            ban_check = Some(receiver);
+        }
+        if let Some(receiver) = &ban_check {
+            match receiver.try_recv() {
+                Ok(Ok(ids)) => {
+                    next_ban_check = now + Duration::from_secs(10 * 60);
+                    if last_bans.as_ref() != Some(&ids) || bans_unread {
+                        write_log(&format!("Global bans: {} player(s) banned from ReSkate multiplayer cannot join.", ids.len()));
+                    }
+                    last_bans = Some(ids.clone());
+                    host.set_global_bans(ids);
+                    bans_unread = false;
+                    ban_check = None;
+                }
+                Ok(Err(problem)) => {
+                    next_ban_check = now + Duration::from_secs(60);
+                    if !bans_unread {
+                        write_log(&format!(
+                            "The global ban list could not be read ({problem}). Trying again every minute; until then the bans already read hold."
+                        ));
+                    }
+                    bans_unread = true;
+                    ban_check = None;
+                }
+                Err(TryRecvError::Disconnected) => {
+                    next_ban_check = now + Duration::from_secs(60);
+                    ban_check = None;
+                }
+                Err(TryRecvError::Empty) => {}
             }
         }
         if let Some(server) = &status {

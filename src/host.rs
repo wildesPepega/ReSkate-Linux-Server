@@ -248,6 +248,7 @@ pub struct Host {
     spare_links: Vec<TransportPeer>,
     spare_messages: Vec<TransportMessage>,
     kicked: BTreeSet<u64>,
+    global_bans: Vec<u64>, // the ReSkate backend's ban list, sorted (src/global_bans.rs)
     join_backoff: JoinBackoff, // Steam IDs whose attempts to join keep failing
     password: Option<PasswordKey>,
     id: u64,
@@ -298,6 +299,7 @@ impl Host {
             spare_links: Vec::new(),
             spare_messages: Vec::new(),
             kicked: BTreeSet::new(),
+            global_bans: Vec::new(),
             join_backoff: JoinBackoff::default(),
             password: None,
             id: 0,
@@ -370,6 +372,15 @@ impl Host {
     }
     fn is_banned(&self, id: u64) -> bool {
         self.config.bans.iter().any(|b| b.id == id)
+    }
+    // Banned by the ReSkate team, unless this server lets them in ("global_bans": false).
+    pub fn globally_banned(&self, id: u64) -> bool {
+        self.config.global_bans && self.global_bans.binary_search(&id).is_ok()
+    }
+    // A new list from the backend (sorted): from the next tick on, it turns those players away,
+    // also when they are already on.
+    pub fn set_global_bans(&mut self, ids: Vec<u64>) {
+        self.global_bans = ids;
     }
     fn save(&self) {
         if let Err(e) = save_config(&self.config) {
@@ -1475,6 +1486,10 @@ impl Host {
             }
             if self.is_banned(link.id) {
                 self.transport.disconnect(link.id, "You are banned from this server.");
+                continue;
+            }
+            if self.globally_banned(link.id) {
+                self.transport.disconnect(link.id, crate::global_bans::BANNED_NOTICE);
                 continue;
             }
             if !self.guests.contains_key(&link.id) && self.join_backoff.waiting(link.id, now) {

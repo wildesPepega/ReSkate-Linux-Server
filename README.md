@@ -16,7 +16,7 @@ join it straight from the game – no Wine, no Windows VM.
 
 | | |
 |---|---|
-| Based on | ReSkate **1.1.0**, network protocol **39** |
+| Based on | ReSkate **1.1.1**, network protocol **41** |
 | Platform | Linux x86_64, glibc 2.31 or newer (Debian 11+, Ubuntu 20.04+, …) |
 | Language | Rust (edition 2021) |
 | License | GPL-3.0 (same as ReSkate) |
@@ -60,7 +60,7 @@ Everything the Windows dedicated server does, plus a few things it doesn't:
 - Player votes (map, kick, time of day), parties and party chat (`/party`, `/p`)
 - Speed check and score check (anti-cheat), activity log
 - Object sync / park editor, throwdowns, voice relay with proximity range
-- World layer sync (time of day), park layouts, password, bans
+- World layer sync (time of day), park layouts, password, bans, and the ReSkate team's global bans ([docs](docs/configuration.md#fields))
 - Custom maps from a `Mods/` folder
 - Clean shutdown on `quit`, Ctrl+C, SIGTERM and SIGHUP (signs out of Steam first)
 - **Lua plugins**: custom `/commands`, automatic messages, timers, events and saved data ([docs](docs/plugins.md))
