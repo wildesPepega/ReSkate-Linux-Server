@@ -14,6 +14,9 @@ release). It uses the `ghcr.io/parkervcp/yolks:debian` image.
 2. Assign **two UDP allocations**:
    - the **primary** allocation is the game port (`SERVER_PORT`),
    - put the second port into the **Query Port** variable. It must differ from the game port.
+
+   The game port's allocation also serves the [status page](configuration.md#status-page) at
+   `http://<ip>:<game port>/status` over TCP; Pterodactyl opens allocations for TCP and UDP.
 3. Leave **Download URL** at its default to install the latest release from this repository, or point
    it at any reachable copy of `ReSkateServer-linux-x64.tar.gz`. Empty it to upload the files yourself.
 4. Memory: 256 MB is plenty for a typical server; disk: 200 MB (SteamCMD included).

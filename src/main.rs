@@ -16,6 +16,7 @@ mod plugins;
 mod password;
 mod protocol;
 mod speed;
+mod status;
 mod steam;
 mod text;
 mod throwdown;
@@ -460,6 +461,23 @@ fn run() -> i32 {
         format!("{} admin(s). Type help for commands.", host.config.admins.len())
     });
 
+    let started = Instant::now();
+    let status = if !host.config.status_enabled {
+        None
+    } else {
+        match status::StatusServer::start(host.config.port) {
+            Ok(server) => {
+                write_log(&format!("Status: http://{}:{}/status (TCP).", steam.public_ip(), host.config.port));
+                Some(server)
+            }
+            Err(e) => {
+                write_log(&format!("Status page is off: TCP port {} cannot be opened ({e}).", host.config.port));
+                None
+            }
+        }
+    };
+    let mut next_status = Instant::now();
+
     let input = console_input();
     let mut next_advertise = Instant::now();
     let mut name_allowed: Option<bool> = None;
@@ -627,6 +645,12 @@ fn run() -> i32 {
                 }
                 staged = None;
                 install_now = false;
+            }
+        }
+        if let Some(server) = &status {
+            if now >= next_status {
+                next_status = now + Duration::from_secs(1);
+                server.set(host.status(started.elapsed().as_secs()).to_string());
             }
         }
         if now >= next_advertise {

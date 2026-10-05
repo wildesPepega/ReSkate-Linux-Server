@@ -466,6 +466,37 @@ impl Host {
     pub fn map_name(&self) -> String {
         map_label(&self.config.map)
     }
+    // What GET /status answers (src/status.rs): public facts only. The join code only for a
+    // listed server, whose code the server browser shows anyway; player names only if allowed.
+    pub fn status(&self, uptime_seconds: u64) -> serde_json::Value {
+        let listed = self.config.listed && !contains_bad_words(&self.config.name);
+        let mut players: Vec<serde_json::Value> = Vec::new();
+        if self.config.status_players {
+            for g in self.guests.values().filter(|g| g.handshaken) {
+                let since = if g.connected_at != 0 && self.now > g.connected_at { (self.now - g.connected_at) / 1_000_000 } else { 0 };
+                players.push(serde_json::json!({
+                    "name": guest_name(g),
+                    "admin": self.is_admin(g.member.id),
+                    "online_seconds": since,
+                }));
+            }
+        }
+        let updated = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
+        serde_json::json!({
+            "name": self.config.name,
+            "version": crate::update::VERSION,
+            "protocol": PROTOCOL_VERSION,
+            "map": self.map_name(),
+            "players": self.players(),
+            "max_players": self.config.max_players,
+            "password": !self.config.password.is_empty(),
+            "listed": listed,
+            "join_code": if listed && self.id != 0 { serde_json::Value::from(self.invite()) } else { serde_json::Value::Null },
+            "uptime_seconds": uptime_seconds,
+            "player_list": if self.config.status_players { serde_json::Value::from(players) } else { serde_json::Value::Null },
+            "updated": updated,
+        })
+    }
     // Everyone connected, including players still joining.
     pub fn connected(&self) -> usize {
         self.guests.len()
