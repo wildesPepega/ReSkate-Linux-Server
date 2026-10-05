@@ -154,6 +154,10 @@ fn write_local(text: &str) -> String {
     time
 }
 
+// How long the main loop sleeps between ticks, with players and on an empty server.
+const LOOP_MS: u64 = 2;
+const IDLE_LOOP_MS: u64 = 20;
+
 extern "C" fn on_signal(_: libc::c_int) {
     STOPPING.store(true, Ordering::SeqCst);
 }
@@ -656,7 +660,9 @@ fn run() -> i32 {
                 secret: host.secret(),
             });
         }
-        std::thread::sleep(Duration::from_millis(2));
+        // With nobody connected nothing needs a fast loop: a new connection is noticed within
+        // 20 ms and the loop is back at full speed from the next tick on.
+        std::thread::sleep(Duration::from_millis(if host.connected() == 0 { IDLE_LOOP_MS } else { LOOP_MS }));
     }
     write_log(if restarting { "Restarting for the update." } else { "Shutting down." });
     let reason = if restarting { "The server is restarting for an update. Join again in a minute." } else { "The server is shutting down." };

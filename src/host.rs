@@ -12,7 +12,7 @@ use crate::password::{password_key, password_proof, proof_matches, PasswordKey};
 use crate::plugins::{Action, PlayerInfo, PluginManager, Snapshot};
 use crate::protocol::*;
 use crate::speed::{SpeedCheck, LIMIT as SPEED_LIMIT};
-use crate::steam::SteamTransport;
+use crate::steam::{SteamTransport, TransportMessage, TransportPeer};
 use crate::text::{decimal, integer, lower, number, on_off, prefix, split, trim};
 use crate::wire::{decode_wire, encode_wire, encode_wire_bytes, DeltaReceiver, DeltaSender};
 use crate::words::{contains_bad_words, mask_bad_words};
@@ -244,6 +244,9 @@ pub struct Host {
     parties: PartyBook,
     party_revision: u64,
     guests: BTreeMap<u64, Box<Guest>>,
+    spare_ids: Vec<u64>, // reused by guest_ids(): the loops below run hundreds of times a second
+    spare_links: Vec<TransportPeer>,
+    spare_messages: Vec<TransportMessage>,
     kicked: BTreeSet<u64>,
     join_backoff: JoinBackoff, // Steam IDs whose attempts to join keep failing
     password: Option<PasswordKey>,
@@ -287,6 +290,9 @@ impl Host {
             parties,
             party_revision: 0,
             guests: BTreeMap::new(),
+            spare_ids: Vec::new(),
+            spare_links: Vec::new(),
+            spare_messages: Vec::new(),
             kicked: BTreeSet::new(),
             join_backoff: JoinBackoff::default(),
             password: None,
@@ -395,6 +401,20 @@ impl Host {
             copy += 1;
         }
         prefix(&clean_roster_name(&unique), 128).to_string()
+    }
+
+    // Every guest's ID, for loops that may drop guests while they walk. The list's memory is
+    // reused: hand it back with spare_ids() when done (a loop left early just loses it).
+    fn guest_ids(&mut self) -> Vec<u64> {
+        let mut ids = std::mem::take(&mut self.spare_ids);
+        ids.clear();
+        ids.extend(self.guests.keys().copied());
+        ids
+    }
+    fn spare_ids(&mut self, ids: Vec<u64>) {
+        if ids.capacity() > self.spare_ids.capacity() {
+            self.spare_ids = ids;
+        }
     }
 
     fn handshaken(&self, id: u64) -> bool {
@@ -549,8 +569,8 @@ impl Host {
         let source = self.guests.get(&packet.source).map(|s| (s.latest_root, s.pose_arrival, s.member.id, s.member.epoch));
         let mut encoded: [Option<(Packet, Vec<u8>, Vec<u8>)>; 3] = [None, None, None];
         let gameplay = matches!(packet.kind, kind::POSE | kind::AUDIO | kind::VOICE | kind::COSMETICS);
-        let ids: Vec<u64> = self.guests.keys().copied().collect();
-        for id in ids {
+        let ids = self.guest_ids();
+        for &id in &ids {
             let p = self.guests.get_mut(&id).unwrap();
             if !p.handshaken || id == except || (gameplay && !p.world_ready) {
                 continue;
@@ -650,6 +670,7 @@ impl Host {
                 self.transport.disconnect(id, "Cannot deliver required session data. Join again.");
             }
         }
+        self.spare_ids(ids);
     }
 
     fn send_roster(&mut self) {
@@ -1237,8 +1258,8 @@ impl Host {
     fn receive_cosmetics(&mut self) {
         let now = self.now;
         let world = self.world;
-        let ids: Vec<u64> = self.guests.keys().copied().collect();
-        for id in ids {
+        let ids = self.guest_ids();
+        for &id in &ids {
             let Some(link) = self.guests.get_mut(&id) else { continue };
             let pending = std::mem::take(&mut link.pending_cosmetics);
             for item in pending {
@@ -1257,6 +1278,7 @@ impl Host {
                 }
             }
         }
+        self.spare_ids(ids);
     }
 
     // ---- Objects ---------------------------------------------------------------------------
@@ -1363,9 +1385,10 @@ impl Host {
         }
         self.now = now;
         self.transport.poll();
-        let links = self.transport.peers();
-        let ids: Vec<u64> = self.guests.keys().copied().collect();
-        for id in ids {
+        let mut links = std::mem::take(&mut self.spare_links);
+        self.transport.peers_into(&mut links);
+        let ids = self.guest_ids();
+        for &id in &ids {
             if !links.iter().any(|l| l.id == id) {
                 let reason = match self.transport.take_end_reason(id) {
                     Some(why) => format!("Disconnected: {}.", why.trim_end_matches('.')),
@@ -1374,6 +1397,7 @@ impl Host {
                 self.drop_guest(id, &reason);
             }
         }
+        self.spare_ids(ids);
         for link in &links {
             if self.kicked.contains(&link.id) {
                 self.transport.disconnect(link.id, "You were kicked from this server.");
@@ -1402,12 +1426,20 @@ impl Host {
                 guest.connected_at = now;
             }
         }
-        for message in self.transport.receive() {
+        self.spare_links = links;
+        let mut messages = std::mem::take(&mut self.spare_messages);
+        self.transport.receive_into(&mut messages);
+        for message in &messages {
             self.receive(message.peer, &message.bytes, message.arrived);
         }
+        // The messages' own bytes go; the list's memory stays for the next tick, unless a
+        // backlog made it large.
+        messages.clear();
+        messages.shrink_to(1024);
+        self.spare_messages = messages;
         self.receive_cosmetics();
-        let ids: Vec<u64> = self.guests.keys().copied().collect();
-        for id in ids {
+        let ids = self.guest_ids();
+        for &id in &ids {
             let Some(g) = self.guests.get(&id) else { continue };
             // Authorized arrivals get time for loading; this deadline is absolute.
             let handshake_timeout = if g.map_authorized { 180_000_000 } else { 8_000_000 };
@@ -1423,12 +1455,13 @@ impl Host {
                 self.drop_guest(id, "Timed out waiting for gameplay data.");
             }
         }
+        self.spare_ids(ids);
         self.tick_parties();
         if self.roster_dirty || now.wrapping_sub(self.last_roster) > 2_000_000 {
             self.send_roster();
         }
-        let ids: Vec<u64> = self.guests.keys().copied().collect();
-        for id in ids {
+        let ids = self.guest_ids();
+        for &id in &ids {
             let Some(g) = self.guests.get(&id) else { continue };
             if !g.handshaken {
                 continue;
@@ -1442,6 +1475,7 @@ impl Host {
                 self.send_maps(id);
             }
         }
+        self.spare_ids(ids);
         let loading = self.guests.values().any(|g| g.handshaken && !g.world_ready);
         if self.world > 1
             && (loading || self.last_world_state == 0)
