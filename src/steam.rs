@@ -539,6 +539,9 @@ pub struct SteamTransport {
     // A player's new connection that replaced their old one, held back for one poll so the host
     // sees the old one end before the new one appears.
     rejoining: BTreeMap<u64, Link>,
+    // Reused by poll() and receive_into(), which run hundreds of times a second.
+    spare_ids: Vec<u64>,
+    spare_handles: Vec<(u64, u32, bool)>,
 }
 
 // Steam's reason for ending a connection (ESteamNetConnectionEnd), in words.
@@ -588,6 +591,8 @@ impl SteamTransport {
             clock: Instant::now(),
             ended: BTreeMap::new(),
             rejoining: BTreeMap::new(),
+            spare_ids: Vec::new(),
+            spare_handles: Vec::new(),
         }
     }
 
@@ -744,8 +749,10 @@ impl SteamTransport {
         self.ended.remove(&id)
     }
 
-    pub fn peers(&self) -> Vec<TransportPeer> {
-        self.peers.iter().map(|&(id, connected)| TransportPeer { id, connected }).collect()
+    // The connections, into `out` (cleared first) so the caller can reuse its memory.
+    pub fn peers_into(&self, out: &mut Vec<TransportPeer>) {
+        out.clear();
+        out.extend(self.peers.iter().map(|&(id, connected)| TransportPeer { id, connected }));
     }
 
     fn new_link(&self, handle: u32, now: u64) -> Link {
@@ -829,8 +836,10 @@ impl SteamTransport {
         if sweep {
             self.next_sweep = now + 1000;
         }
-        let ids: Vec<u64> = self.links.keys().copied().collect();
-        for id in ids {
+        let mut ids = std::mem::take(&mut self.spare_ids);
+        ids.clear();
+        ids.extend(self.links.keys().copied());
+        for &id in &ids {
             let Some(link) = self.links.get_mut(&id) else { continue };
             if link.connected && !link.recheck && !sweep {
                 continue;
@@ -860,6 +869,7 @@ impl SteamTransport {
                 self.disconnect(id, "Steam connection timed out.");
             }
         }
+        self.spare_ids = ids;
         self.publish_links();
     }
 
@@ -924,11 +934,15 @@ impl SteamTransport {
         }
     }
 
-    pub fn receive(&mut self) -> Vec<TransportMessage> {
-        let mut result = Vec::new();
-        let Some(api) = self.api else { return result };
-        let ids: Vec<(u64, u32, bool)> = self.links.iter().map(|(&id, l)| (id, l.handle, l.connected)).collect();
-        for (id, handle, connected) in ids {
+    // What arrived since the last call, into `result` (cleared first) so the caller can reuse
+    // its memory.
+    pub fn receive_into(&mut self, result: &mut Vec<TransportMessage>) {
+        result.clear();
+        let Some(api) = self.api else { return };
+        let mut ids = std::mem::take(&mut self.spare_handles);
+        ids.clear();
+        ids.extend(self.links.iter().map(|(&id, l)| (id, l.handle, l.connected)));
+        for &(id, handle, connected) in &ids {
             if !connected {
                 continue;
             }
@@ -954,7 +968,7 @@ impl SteamTransport {
                 }
             }
         }
-        result
+        self.spare_handles = ids;
     }
 }
 
