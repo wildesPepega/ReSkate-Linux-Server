@@ -132,6 +132,28 @@ Copy a custom map's mod folder from the game's `Mods` folder into `Mods/` next t
 `reskate-levels.json` is read. The map can then be picked by name (`maps`, `map <name>`). Players need
 the same map mod installed to join.
 
+### Maps from Thunderstore
+
+Instead of copying folders, list the maps' Thunderstore links in `map_mods` (or pass them with
+`--map-mods "<link>,<link>"`; on Pterodactyl, the **Map Mods** variable):
+
+```json
+"map_mods": ["https://thunderstore.io/c/<game>/p/<owner>/<map>/"]
+```
+
+At every start the server:
+
+- installs each listed map into `Mods/<owner>-<map>/`, or updates it when Thunderstore has a newer
+  version. A link ending in `/v/<version>/` (or `<owner>-<map>-<version>`) stays on that version.
+- keeps **only** the package's `reskate-levels.json`. It reads just that file out of the zip (a few
+  kilobytes, not the map), and deletes a full download right away when the host cannot send parts.
+- adds a newly installed map to `map_pool` if the pool lists maps, so it can be voted for.
+- removes the folder of a map you took off the list. Folders you put in `Mods/` yourself are never
+  touched; the server's own carry a `.thunderstore.json`.
+
+The map is then picked by its name as usual (`map bbcity`). While Thunderstore cannot be reached, the
+installed version stays; the log says what happened (`Map mods: …`).
+
 ## World layers
 
 `world-layers.json` lets the server force world layers (time of day and so on) on every player

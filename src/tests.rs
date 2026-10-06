@@ -1276,3 +1276,112 @@ fn global_ban_lists_check_the_centrix_category() {
     assert_eq!(parse_ban_list(r#"{"categories":{"centrix":["76561198000000011"]},"banned":[]}"#), Ok(vec![]));
     assert!(parse_ban_list(r#"{"categories":{"centrix":["nobody"]},"banned":[]}"#).is_err());
 }
+
+#[test]
+fn thunderstore_links() {
+    use crate::thunderstore::{parse_package, split_links, Package};
+    let latest = Some(Package { namespace: "Dingo".into(), name: "BB_City".into(), version: None });
+    let pinned = Some(Package { namespace: "Dingo".into(), name: "BB_City".into(), version: Some("1.2.3".into()) });
+    assert_eq!(parse_package("https://thunderstore.io/c/skate/p/Dingo/BB_City/"), latest);
+    assert_eq!(parse_package(" https://thunderstore.io/c/skate/p/Dingo/BB_City?tab=readme "), latest);
+    assert_eq!(parse_package("https://thunderstore.io/c/skate/p/Dingo/BB_City/v/1.2.3/"), pinned);
+    assert_eq!(parse_package("https://thunderstore.io/package/Dingo/BB_City/"), latest);
+    assert_eq!(parse_package("https://skate.thunderstore.io/package/Dingo/BB_City/"), latest);
+    assert_eq!(parse_package("https://thunderstore.io/package/download/Dingo/BB_City/1.2.3/"), pinned);
+    assert_eq!(parse_package("Dingo-BB_City"), latest);
+    assert_eq!(parse_package("Dingo-BB_City-1.2.3"), pinned);
+    for bad in ["https://example.com/c/skate/p/Dingo/BB_City/", "https://thunderstore.io/c/skate/", "Dingo", "Dingo-BB City", "Dingo-BB_City-1.2", "../x-y"] {
+        assert_eq!(parse_package(bad), None, "{bad}");
+    }
+    assert_eq!(split_links("a-b, c-d;e-f\n g-h"), ["a-b", "c-d", "e-f", "g-h"]);
+    assert_eq!(latest.unwrap().folder(), "Dingo-BB_City");
+}
+
+// A zip as Thunderstore serves one: stored and deflated files, the manifest in a subfolder.
+fn test_zip(files: &[(&str, &[u8], bool)]) -> Vec<u8> {
+    use std::io::Write;
+    let (mut zip, mut directory) = (Vec::new(), Vec::new());
+    for (name, data, deflate) in files {
+        let packed = if *deflate {
+            let mut encoder = flate2::write::DeflateEncoder::new(Vec::new(), flate2::Compression::default());
+            encoder.write_all(data).unwrap();
+            encoder.finish().unwrap()
+        } else {
+            data.to_vec()
+        };
+        let method: u16 = if *deflate { 8 } else { 0 };
+        let offset = zip.len() as u32;
+        zip.extend_from_slice(&[0x50, 0x4b, 0x03, 0x04, 20, 0, 0, 0]);
+        zip.extend_from_slice(&method.to_le_bytes());
+        zip.extend_from_slice(&[0; 8]); // time, date, crc
+        zip.extend_from_slice(&(packed.len() as u32).to_le_bytes());
+        zip.extend_from_slice(&(data.len() as u32).to_le_bytes());
+        zip.extend_from_slice(&(name.len() as u16).to_le_bytes());
+        zip.extend_from_slice(&[0, 0]);
+        zip.extend_from_slice(name.as_bytes());
+        zip.extend_from_slice(&packed);
+        directory.extend_from_slice(&[0x50, 0x4b, 0x01, 0x02, 20, 0, 20, 0, 0, 0]);
+        directory.extend_from_slice(&method.to_le_bytes());
+        directory.extend_from_slice(&[0; 8]);
+        directory.extend_from_slice(&(packed.len() as u32).to_le_bytes());
+        directory.extend_from_slice(&(data.len() as u32).to_le_bytes());
+        directory.extend_from_slice(&(name.len() as u16).to_le_bytes());
+        directory.extend_from_slice(&[0; 12]); // extra, comment, disk, attributes
+        directory.extend_from_slice(&offset.to_le_bytes());
+        directory.extend_from_slice(name.as_bytes());
+    }
+    let start = zip.len() as u32;
+    zip.extend_from_slice(&directory);
+    zip.extend_from_slice(&[0x50, 0x4b, 0x05, 0x06, 0, 0, 0, 0]);
+    zip.extend_from_slice(&(files.len() as u16).to_le_bytes());
+    zip.extend_from_slice(&(files.len() as u16).to_le_bytes());
+    zip.extend_from_slice(&(directory.len() as u32).to_le_bytes());
+    zip.extend_from_slice(&start.to_le_bytes());
+    zip.extend_from_slice(&[0, 0]);
+    zip
+}
+
+#[test]
+fn thunderstore_zip_manifest() {
+    use crate::thunderstore::manifests_in_zip;
+    let one = br#"{"levels":[{"asset":"Levels/Custom/BBCity/BBCity","displayName":"bbcity"}]}"#;
+    let two = "\u{feff}{\"levels\":[{\"asset\":\"Levels/Custom/Two/Two\"}]}".as_bytes();
+    let big = vec![7u8; 200_000]; // the map itself, never read
+    let zip = test_zip(&[
+        ("manifest.json", b"{}", false),
+        ("BepInEx/plugins/BBCity/BBCity.pak", &big, true),
+        ("BepInEx/plugins/BBCity/reskate-levels.json", one, true),
+        ("Other/RESKATE-LEVELS.JSON", two, false),
+    ]);
+    let manifest = manifests_in_zip(zip).unwrap();
+    let assets: Vec<&str> = manifest["levels"].as_array().unwrap().iter().map(|l| l["asset"].as_str().unwrap()).collect();
+    assert_eq!(assets, ["Levels/Custom/BBCity/BBCity", "Levels/Custom/Two/Two"]);
+    assert!(manifests_in_zip(test_zip(&[("manifest.json", b"{}", true)])).unwrap_err().contains("not a ReSkate map"));
+    assert!(manifests_in_zip(b"not a zip".to_vec()).is_err());
+    assert!(manifests_in_zip(test_zip(&[("reskate-levels.json", b"{\"maps\":[]}", false)])).is_err());
+}
+
+#[test]
+fn thunderstore_removes_unlisted_packages_only() {
+    let mods = std::env::temp_dir().join(format!("reskate-mapmods-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&mods);
+    std::fs::create_dir_all(mods.join("Dingo-Old")).unwrap();
+    std::fs::write(mods.join("Dingo-Old").join(crate::thunderstore::MARKER), "{}").unwrap();
+    std::fs::create_dir_all(mods.join("ByHand")).unwrap();
+    let report = crate::thunderstore::sync(&mods, &["not a link".into()]);
+    assert!(!mods.join("Dingo-Old").exists() && mods.join("ByHand").exists());
+    assert_eq!(report.lines.len(), 2, "{:?}", report.lines);
+    assert!(report.new_maps.is_empty());
+    let _ = std::fs::remove_dir_all(&mods);
+}
+
+#[test]
+fn map_mods_setting() {
+    let file = std::env::temp_dir().join(format!("reskate-mapmods-{}.json", std::process::id()));
+    std::fs::write(&file, r#"{"map_mods": [" https://thunderstore.io/c/skate/p/Dingo/BB_City/ ", ""]}"#).unwrap();
+    let config = load_config(&file, &mut Vec::new()).unwrap();
+    assert_eq!(config.map_mods, ["https://thunderstore.io/c/skate/p/Dingo/BB_City/"]);
+    save_config(&config).unwrap();
+    assert!(std::fs::read_to_string(&file).unwrap().contains("\"map_mods\""));
+    let _ = std::fs::remove_file(&file);
+}

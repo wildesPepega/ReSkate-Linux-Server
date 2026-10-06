@@ -20,6 +20,7 @@ mod speed;
 mod status;
 mod steam;
 mod text;
+mod thunderstore;
 mod throwdown;
 mod update;
 mod wire;
@@ -244,15 +245,16 @@ struct Options {
     no_update: bool,
     port: Option<u16>,
     query_port: Option<u16>,
+    map_mods: Option<Vec<String>>,
 }
 
 fn usage() -> &'static str {
-    "ReSkateServer [--config <file>] [--port <port>] [--query-port <port>] [--no-update] [--version]\n\
+    "ReSkateServer [--config <file>] [--port <port>] [--query-port <port>] [--map-mods <links>] [--no-update] [--version]\n\
      Commands are read from the console (stdin); type help once it runs."
 }
 
 fn parse_options() -> Result<Options, String> {
-    let mut options = Options { config: None, no_update: false, port: None, query_port: None };
+    let mut options = Options { config: None, no_update: false, port: None, query_port: None, map_mods: None };
     let args: Vec<String> = std::env::args().skip(1).collect();
     let mut i = 0;
     while i < args.len() {
@@ -269,6 +271,11 @@ fn parse_options() -> Result<Options, String> {
             }
             "--query-port" | "--query_port" => {
                 options.query_port = Some(port(value(i)?, "--query-port")?);
+                i += 1;
+            }
+            // Thunderstore links of custom maps, from a hosting panel's variable; replaces "map_mods".
+            "--map-mods" | "--map_mods" => {
+                options.map_mods = Some(thunderstore::split_links(&value(i)?));
                 i += 1;
             }
             "--no-update" => options.no_update = true,
@@ -337,6 +344,20 @@ fn run() -> i32 {
     if !added.is_empty() {
         write_log(&format!("Added new settings to {file_name} with their defaults: {}.", added.join(", ")));
     }
+    // Map mods from Thunderstore, before the maps are read. A panel's list (--map-mods, or the
+    // MAP_MODS variable) replaces the file's and is saved, so the file shows what the server uses.
+    // Pterodactyl hands its variables over as environment variables (egg variable MAP_MODS).
+    let panel_links = std::env::var("MAP_MODS").ok().map(|text| thunderstore::split_links(&text));
+    if let Some(links) = options.map_mods.clone().or(panel_links) {
+        if links != config.map_mods {
+            config.map_mods = links;
+            let _ = save_config(&config);
+        }
+    }
+    let map_mods = thunderstore::sync(&here.join("Mods"), &config.map_mods);
+    for line in &map_mods.lines {
+        write_log(line);
+    }
     // Maps: the retail ones and custom maps from Mods/<mod>/reskate-levels.json.
     for problem in load_levels(&here.join("Mods")) {
         write_log(&format!("Mods: skipped {problem}"));
@@ -351,6 +372,19 @@ fn run() -> i32 {
     if setting != config.map && !setting.is_empty() {
         config.map = setting;
         renamed = true;
+    }
+    // A map that just came from Thunderstore joins a pool that names maps, or nobody could vote
+    // for it; taken out again later, it stays out.
+    if !config.map_pool.is_empty() {
+        for name in &map_mods.new_maps {
+            if let Some(level) = config::find_level(name) {
+                if !config.map_pool.iter().any(|m| m.eq_ignore_ascii_case(&level.name)) {
+                    write_log(&format!("Map mods: added {} to map_pool.", level.name));
+                    config.map_pool.push(level.name);
+                    renamed = true;
+                }
+            }
+        }
     }
     // Short pool names ("isle") are saved in full.
     for map in &mut config.map_pool {

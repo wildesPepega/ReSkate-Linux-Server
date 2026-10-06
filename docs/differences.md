@@ -14,6 +14,7 @@ config fields and console messages. The differences are:
 | Gameplay timeout | A player whose game sends nothing for 10 s is dropped | 30 s: games freeze for longer while loading a newly placed throwdown drop (Spot Battles especially), which dropped several players at once |
 | Discord | – | Console events to a Discord webhook ([configuration.md](configuration.md#discord)) |
 | Ports | `port` and `query_port` in `ReSkateServer.json` | Only `--port` / `--query-port` (the panel's allocations); the old keys are removed from the file |
+| Map mods | Copied into `Mods/` by hand | Also fetched from Thunderstore links (`map_mods`), keeping only `reskate-levels.json` ([installation.md](installation.md#maps-from-thunderstore)) |
 | Plugins | – | Lua plugins for custom commands, automatic messages, timers and events ([plugins.md](plugins.md)) |
 | Shutdown | Closing the window | `quit`, Ctrl+C, SIGTERM, SIGHUP – all sign out of Steam first |
 | Server name rule | A config `name` outside the rule (letters, numbers, spaces, `- _ [ ] ( )`) stops the server from starting | The server starts, stays out of the server browser, and the log says how to rename it, so an automatic update never leaves a server down |
