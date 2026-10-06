@@ -1251,3 +1251,28 @@ fn map_pool_and_rotation_commands() {
     assert_eq!(host.command("msg Bob", 0), "msg <player> <text>");
     let _ = std::fs::remove_dir_all(&folder);
 }
+
+#[test]
+fn server_names_follow_the_browser_rule() {
+    assert!(valid_server_name("Old Server") && valid_server_name("[EU] Skate_Park-2 (24x7)") && valid_server_name("a"));
+    for bad in ["", &"a".repeat(65), "Best! Server", "café", "a.b", "<b>x</b>", " padded", "padded ", "[]--()", "two\nlines"] {
+        assert!(!valid_server_name(bad), "accepted: {bad:?}");
+    }
+    let config = ServerConfig { name: "Best! Server".into(), ..Default::default() };
+    let mut host = crate::host::Host::new(config, crate::steam::SteamTransport::new(), Box::new(|_: &str| {}));
+    // A name from before the rule still runs, but is not listed.
+    assert_eq!(host.status()["listed"], false);
+    assert!(host.command("name Still! Bad", 0).starts_with("Server names are 1 to 64 letters"));
+    assert_eq!(host.config.name, "Best! Server");
+    host.config.file = std::env::temp_dir().join(format!("reskate-name-{}.json", std::process::id()));
+    assert!(host.command("name [EU] Good Server", 0).starts_with("Server renamed to [EU] Good Server"));
+    assert_eq!(host.status()["listed"], true);
+    let _ = std::fs::remove_file(&host.config.file);
+}
+
+#[test]
+fn global_ban_lists_check_the_centrix_category() {
+    use crate::global_bans::parse_ban_list;
+    assert_eq!(parse_ban_list(r#"{"categories":{"centrix":["76561198000000011"]},"banned":[]}"#), Ok(vec![]));
+    assert!(parse_ban_list(r#"{"categories":{"centrix":["nobody"]},"banned":[]}"#).is_err());
+}

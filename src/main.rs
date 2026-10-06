@@ -714,11 +714,20 @@ fn run() -> i32 {
         if now >= next_advertise {
             next_advertise = now + Duration::from_secs(2);
             discord::set_name(&host.config.name);
-            // A name with a bad word in it is never listed (clients hide one too); the server
-            // still runs and players can join with its code.
-            let allowed = !words::contains_bad_words(&host.config.name);
+            // A name with a bad word in it, or with characters a server name cannot have, is never
+            // listed (clients hide one too); the server still runs and players can join with its
+            // code. The C++ server refuses to start with such a name; here an older config that
+            // was fine before the rule still starts after an automatic update.
+            let valid = protocol::valid_server_name(&host.config.name);
+            let allowed = valid && !words::contains_bad_words(&host.config.name);
             if name_allowed != Some(allowed) {
-                if !allowed {
+                if !valid {
+                    write_log(&format!(
+                        "The server name \"{}\" is not shown in the server browser: server names are {}. Rename it with: name <new name>",
+                        host.config.name,
+                        protocol::SERVER_NAME_RULE
+                    ));
+                } else if !allowed {
                     write_log(&format!(
                         "The server name \"{}\" contains blocked words, so the server is not listed in the server browser. Rename it with: name <new name>",
                         host.config.name
