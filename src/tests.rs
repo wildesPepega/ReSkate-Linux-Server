@@ -39,7 +39,7 @@ fn header_layout_matches_the_game() {
     let raw = encode(&base(kind::AWAY), false);
     assert_eq!(raw.len(), PACKET_HEADER_SIZE);
     assert_eq!(&raw[..4], b"RMP1");
-    assert_eq!(u16::from_le_bytes([raw[4], raw[5]]), 41);
+    assert_eq!(u16::from_le_bytes([raw[4], raw[5]]), 42);
     assert_eq!(u16::from_le_bytes([raw[6], raw[7]]), kind::AWAY);
     assert_eq!(u32::from_le_bytes(raw[8..12].try_into().unwrap()), 0);
     let p = decode(&raw).unwrap();
@@ -1121,4 +1121,133 @@ fn globally_banned_players_are_turned_away_unless_the_server_opts_out() {
 fn global_ban_list_reaches_the_backend() {
     let ids = crate::global_bans::read_ban_list().unwrap();
     println!("{} banned", ids.len());
+}
+
+#[test]
+fn protocol_42_carries_map_names_pools_and_rotation() {
+    let destination = "Levels/Game/DingoLevel_Root/DingoLevel_Root|Levels/Game/dingolevel_reskate_momentumpark/x";
+    for k in [kind::WORLD_STATE, kind::MAP_OFFER] {
+        let mut p = base(k);
+        p.map = map_hash(destination);
+        p.destination = destination.into();
+        p.map_label = "Momentum Park".into();
+        let back = decode(&encode(&p, false)).unwrap();
+        assert_eq!((back.map_label.as_str(), back.destination.as_str()), ("Momentum Park", destination));
+        // An unnamed map is fine; an overlong name is refused.
+        p.map_label.clear();
+        assert!(decode(&encode(&p, false)).unwrap().map_label.is_empty());
+        p.map_label = "a".repeat(MAX_MEMBER_NAME + 1);
+        assert!(std::panic::catch_unwind(|| encode(&p, false)).is_err());
+    }
+    // An empty world state (between maps) still carries its (empty) name.
+    let mut between = base(kind::WORLD_STATE);
+    between.map = 0;
+    assert!(decode(&encode(&between, false)).is_some());
+
+    let mut maps = base(kind::MAPS);
+    maps.maps = vec!["Levels/Game/BAM_LevelRoot/BAM_LevelRoot".into(), "Levels/Custom/bbcity/bbcity".into()];
+    maps.map_pool = vec![1, 0];
+    maps.map_rotation = 20;
+    let back = decode(&encode(&maps, false)).unwrap();
+    assert_eq!((back.map_pool, back.map_rotation), (vec![1, 0], 20));
+    for (pool, rotation) in [(vec![2], 0), (vec![0, 0], 0), (vec![], MAX_MAP_ROTATION as u16 + 1)] {
+        let mut bad = maps.clone();
+        bad.map_pool = pool;
+        bad.map_rotation = rotation;
+        assert!(std::panic::catch_unwind(|| encode(&bad, false)).is_err());
+    }
+    // A pool past the map list on the wire is refused too (the count sits after the assets).
+    let mut raw = encode(&maps, false);
+    let pool_count_at = raw.len() - 2 - 2 * 2 - 2;
+    raw[pool_count_at] = 3;
+    assert!(decode(&raw).is_none());
+    assert!(valid_map_pool(&[], 0) && valid_map_pool(&[0, 2, 1], 3) && !valid_map_pool(&[1, 1], 3) && !valid_map_pool(&[3], 3));
+}
+
+#[test]
+fn direct_messages_keep_their_marker() {
+    use crate::text::dm_line;
+    assert_eq!(dm_line("Server", "", "hi", 100), "[DM from Server] hi");
+    assert_eq!(dm_line("Player", "party", "hi", 100), "[DM from Player to party] hi");
+    assert_eq!(dm_line("Player", "admins", "hi", 100), "[DM from Player to admins] hi");
+    let cut = dm_line("Server", "", &"a".repeat(500), 40);
+    assert!(cut.len() == 40 && cut.starts_with("[DM from Server] "));
+    // Never cut through a UTF-8 character.
+    assert_eq!(dm_line("S", "", "ééé", 15), "[DM from S] é");
+    assert_eq!(dm_line("Server", "", "hi", 3), "[DM from Server] ");
+}
+
+// The same maps the config test loads (custom map bbcity), so the shared map list is the same
+// whichever test loads it.
+fn load_test_levels(name: &str) -> std::path::PathBuf {
+    let folder = std::env::temp_dir().join(format!("reskate-{name}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&folder);
+    let mods = folder.join("Mods").join("bbcity");
+    std::fs::create_dir_all(&mods).unwrap();
+    std::fs::write(mods.join("reskate-levels.json"), r#"{"levels":[{"asset":"Levels/Custom/BBCity/BBCity","displayName":"bbcity"}]}"#).unwrap();
+    assert!(load_levels(&folder.join("Mods")).is_empty());
+    folder
+}
+
+#[test]
+fn map_pool_and_rotation_order() {
+    use crate::config::{in_map_pool, levels, next_pool_map, pool_levels};
+    let folder = load_test_levels("pool");
+    let mut pool = ServerConfig::default();
+    assert!(pool_levels(&pool).len() == levels().len() && in_map_pool(&pool, "Stadium 2"));
+    pool.map_pool = vec!["Isle".into(), "Isle of Grom".into(), "San Vansterdam".into(), "Stadium 1".into()];
+    assert_eq!(pool_levels(&pool).len(), 3);
+    assert!(in_map_pool(&pool, "San Vansterdam"));
+    assert!(in_map_pool(&pool, "Levels/Game/DingoLevel_SDM/DingoLevel_SDM_Int_001/DingoLevel_SDM_Int_001"));
+    assert!(!in_map_pool(&pool, "Super Ultra Mega Resort") && !in_map_pool(&pool, "Nowhere"));
+    let next = |pool: &ServerConfig, map: &str| next_pool_map(pool, map).map(|l| l.name).unwrap_or_default();
+    assert_eq!(next(&pool, "Isle of Grom"), "San Vansterdam");
+    assert_eq!(next(&pool, "Stadium 1"), "Isle of Grom");
+    assert_eq!(next(&pool, "Super Ultra Mega Resort"), "Isle of Grom");
+    pool.map_pool = vec!["Isle of Grom".into()];
+    assert!(next(&pool, "Isle of Grom").is_empty() && next(&pool, "San Vansterdam") == "Isle of Grom");
+    assert_eq!(config_error(&pool), "");
+    pool.map_pool = vec!["Isle of Grom".into(), "Nowhere".into()];
+    assert!(!config_error(&pool).is_empty());
+
+    // Saved and read back; bad entries dropped, the rotation capped.
+    let file = folder.join("ReSkateServer.json");
+    pool.map_pool = vec!["Isle of Grom".into(), "Stadium 1".into()];
+    pool.map_rotation = 15;
+    pool.file = file.clone();
+    save_config(&pool).unwrap();
+    let mut added = Vec::new();
+    let back = load_config(&file, &mut added).unwrap();
+    assert_eq!((back.map_pool.clone(), back.map_rotation), (pool.map_pool.clone(), 15));
+    std::fs::write(&file, r#"{"map_pool": ["Isle of Grom", 7, ""], "map_rotation_minutes": 5000}"#).unwrap();
+    let odd = load_config(&file, &mut added).unwrap();
+    assert_eq!((odd.map_pool, odd.map_rotation), (vec!["Isle of Grom".to_string()], 1440));
+    let _ = std::fs::remove_dir_all(&folder);
+}
+
+#[test]
+fn map_pool_and_rotation_commands() {
+    let folder = load_test_levels("pool-commands");
+    let config = ServerConfig { file: folder.join("ReSkateServer.json"), ..Default::default() };
+    let mut host = crate::host::Host::new(config, crate::steam::SteamTransport::new(), Box::new(|_: &str| {}));
+    assert_eq!(host.command("map-pool", 0), "Map pool: every map");
+    assert!(host.command("map-pool add Isle of Grom", 0).contains("already in the map pool"));
+    // Removing from "every map" keeps all the others.
+    assert!(host.command("map-pool remove Stadium 2", 0).contains("removed from"));
+    assert!(!host.config.map_pool.iter().any(|m| m == "Stadium 2") && host.config.map_pool.len() >= 2);
+    assert!(host.command("map-pool clear", 0).contains("cleared"));
+    assert!(host.config.map_pool.is_empty());
+    host.config.map_pool = vec!["Isle of Grom".into()];
+    assert!(host.command("map-pool remove Isle of Grom", 0).contains("needs at least one map"));
+    assert!(host.command("map-pool add Nowhere", 0).starts_with("No single map"));
+    assert_eq!(host.command("rotation", 0), "Map rotation is off.");
+    assert!(host.command("rotation 2000", 0).starts_with("rotation <1-1440"));
+    assert!(host.command("rotation 30", 0).starts_with("The map changes every 30 min"));
+    assert_eq!(host.config.map_rotation, 30);
+    assert_eq!(host.command("rotation off", 0), "Map rotation is off.");
+    // Direct messages need someone to send them to.
+    assert!(host.command("msg-admins hello", 0).contains("No admins are online"));
+    assert!(host.command("msg Bob hi", 0).starts_with("No single connected player"));
+    assert_eq!(host.command("msg Bob", 0), "msg <player> <text>");
+    let _ = std::fs::remove_dir_all(&folder);
 }

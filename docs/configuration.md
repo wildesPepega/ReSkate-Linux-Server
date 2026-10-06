@@ -29,6 +29,8 @@ the console or by an admin in game is saved back to this file.
   "layers": {},
   "listed": true,
   "map": "San Vansterdam",
+  "map_pool": [],
+  "map_rotation_minutes": 0,
   "max_players": 16,
   "name": "ReSkate server",
   "no_bail": true,
@@ -69,6 +71,8 @@ the console or by an admin in game is saved back to this file.
 |---|---|---|
 | `name` | `"ReSkate server"` | Shown in the server browser (1–64 characters). |
 | `map` | `"San Vansterdam"` | The map everyone skates, named like the game's load command: `"San Vansterdam"`, `"Isle of Grom"`, `"Super Ultra Mega Resort"`, `"Stadium 1"`, or a custom map such as `"bbcity"`. |
+| `map_pool` | `[]` | The maps players may vote for and the rotation goes through, in order, e.g. `["San Vansterdam", "Isle of Grom", "bbcity"]`. Empty allows every map the server knows. Admins can still change to any map. Also `map-pool` in the console. |
+| `map_rotation_minutes` | `0` | Minutes on each map before the server moves to the next one in `map_pool` (0: off, at most 1440). Players get a minute's warning; the clock waits while nobody is on and while a map vote runs, and starts over whenever the map changes. Also `rotation` in the console. |
 | `max_players` | `16` | 1–249. |
 | `password` | `""` | Empty for anyone; otherwise players type it to join. |
 | `welcome` | `""` | A chat line sent to each player as they join. |

@@ -1,12 +1,12 @@
 // The ReSkate multiplayer wire protocol (Extension/Multiplayer/Net/protocol.{h,cpp} and the
-// session model headers it uses). Byte for byte what the game speaks: protocol version 41.
+// session model headers it uses). Byte for byte what the game speaks: protocol version 42.
 use crate::world::{park_id, world_layers, ParkChoices, PARK_FAMILIES, PARK_LOTS, WORLD_LAYER_MODES};
 
 pub const MAX_SKATER_BONES: usize = 512;
 pub const MAX_BOARD_BONES: usize = 64;
 pub const MAX_PACKET: usize = 24576;
 pub const PACKET_HEADER_SIZE: usize = 64;
-pub const PROTOCOL_VERSION: u16 = 41;
+pub const PROTOCOL_VERSION: u16 = 42;
 pub const MAX_THROWDOWN_MESSAGE: usize = 4096;
 pub const MAX_PHYSICS_TUNING: usize = 16384;
 // A host's physics beyond its tuning (Engine/Game/Multiplayer/session_physics.h).
@@ -26,6 +26,8 @@ pub const MAX_MEMBER_NAME: usize = 64;
 pub const MAX_ADMIN_TEXT: usize = 320;
 pub const MAX_BAN_ROWS: usize = 256;
 pub const MAX_SERVER_MAPS: usize = 128;
+// Minutes a server's rotation keeps one map, at most (session_model.h max_map_rotation).
+pub const MAX_MAP_ROTATION: u32 = 1440;
 pub const MAX_MAP_ASSET: usize = 128;
 pub const CHAT_MAX_BYTES: usize = 200;
 
@@ -525,6 +527,9 @@ pub struct Packet {
     pub bans: Vec<Ban>,
     pub ban_total: u32,
     pub maps: Vec<String>,
+    pub map_pool: Vec<u16>, // maps: the pool as indices into `maps`, in rotation order (empty: every map)
+    pub map_rotation: u16,  // maps: minutes per map (0: off)
+    pub map_label: String,  // map_offer, world_state: the map's name for people (may be empty)
     pub throwdown: Vec<u8>,
     pub teleport: [f32; 3],
     pub tuning: Vec<u8>,
@@ -577,6 +582,9 @@ impl Default for Packet {
             bans: Vec::new(),
             ban_total: 0,
             maps: Vec::new(),
+            map_pool: Vec::new(),
+            map_rotation: 0,
+            map_label: String::new(),
             throwdown: Vec::new(),
             teleport: [0.0; 3],
             tuning: Vec::new(),
@@ -758,6 +766,14 @@ pub fn valid_map_destination(value: &str) -> bool {
 // A level asset as a server's map list carries it: printable ASCII, no '|'.
 pub fn valid_map_asset(asset: &str) -> bool {
     !asset.is_empty() && asset.len() <= MAX_MAP_ASSET && asset.bytes().all(|c| c > 32 && c < 127 && c != b'|')
+}
+// A map pool as indices into a map list of `maps` entries: each below `maps`, none twice.
+pub fn valid_map_pool(pool: &[u16], maps: usize) -> bool {
+    pool.len() <= maps && pool.iter().enumerate().all(|(i, &index)| (index as usize) < maps && !pool[..i].contains(&index))
+}
+// A map's name for people as a map offer or world state carries it: empty, or a name like a member's.
+pub fn valid_map_label(label: &str) -> bool {
+    label.is_empty() || valid_member_name(label.as_bytes())
 }
 
 // Length of the UTF-8 sequence starting at `at`, 0 when it is malformed, overlong, a surrogate
@@ -1088,7 +1104,13 @@ pub fn encode(p: &Packet, compact_pose: bool) -> Vec<u8> {
     {
         panic!("Invalid ban list");
     }
-    if p.kind == kind::MAPS && (p.source == 0 || p.maps.len() > MAX_SERVER_MAPS || p.maps.iter().any(|a| !valid_map_asset(a))) {
+    if p.kind == kind::MAPS
+        && (p.source == 0
+            || p.maps.len() > MAX_SERVER_MAPS
+            || !valid_map_pool(&p.map_pool, p.maps.len())
+            || u32::from(p.map_rotation) > MAX_MAP_ROTATION
+            || p.maps.iter().any(|a| !valid_map_asset(a)))
+    {
         panic!("Invalid server map list");
     }
     if p.kind == kind::HELLO && !p.text.is_empty() && !valid_member_name(p.text.as_bytes()) {
@@ -1099,6 +1121,9 @@ pub fn encode(p: &Packet, compact_pose: bool) -> Vec<u8> {
     }
     if p.kind == kind::MAP_OFFER && (!valid_map_destination(&p.destination) || p.map != map_hash(&p.destination)) {
         panic!("Invalid host map destination");
+    }
+    if (p.kind == kind::MAP_OFFER || p.kind == kind::WORLD_STATE) && !valid_map_label(&p.map_label) {
+        panic!("Invalid map name");
     }
     if p.kind == kind::WORLD_STATE
         && (if p.destination.is_empty() {
@@ -1165,6 +1190,8 @@ pub fn encode(p: &Packet, compact_pose: bool) -> Vec<u8> {
             w.int(u64::from(p.map_authorized), 1);
             w.int(p.destination.len() as u64, 2);
             w.raw(p.destination.as_bytes());
+            w.int(p.map_label.len() as u64, 1);
+            w.raw(p.map_label.as_bytes());
         }
         if p.kind == kind::HELLO {
             w.int(p.text.len() as u64, 1);
@@ -1175,6 +1202,8 @@ pub fn encode(p: &Packet, compact_pose: bool) -> Vec<u8> {
         w.int(u64::from(p.world_ready), 1);
         w.int(p.destination.len() as u64, 2);
         w.raw(p.destination.as_bytes());
+        w.int(p.map_label.len() as u64, 1);
+        w.raw(p.map_label.as_bytes());
     } else if p.kind == kind::WORLD_READY {
         w.int(u64::from(p.world_ready), 1);
     } else if p.kind == kind::POSE {
@@ -1290,6 +1319,11 @@ pub fn encode(p: &Packet, compact_pose: bool) -> Vec<u8> {
             w.int(asset.len() as u64, 1);
             w.raw(asset.as_bytes());
         }
+        w.int(p.map_pool.len() as u64, 2);
+        for &index in &p.map_pool {
+            w.int(u64::from(index), 2);
+        }
+        w.int(u64::from(p.map_rotation), 2);
     }
     if p.kind == kind::BANS {
         w.int(u64::from(p.ban_total), 4);
@@ -1392,6 +1426,16 @@ pub fn encode(p: &Packet, compact_pose: bool) -> Vec<u8> {
 }
 
 // ---- Decoding --------------------------------------------------------------------------------
+// A map offer's or world state's map name: a length byte, then the name (valid_map_label).
+fn read_map_label(r: &mut Reader) -> Option<String> {
+    let length = r.int(1)? as usize;
+    if length > MAX_MEMBER_NAME || length > r.left() {
+        return None;
+    }
+    let label = String::from_utf8(r.take(length).to_vec()).ok()?;
+    valid_map_label(&label).then_some(label)
+}
+
 struct Reader<'a> {
     bytes: &'a [u8],
     at: usize,
@@ -1534,6 +1578,7 @@ pub fn decode(bytes: &[u8]) -> Option<Packet> {
             if !valid_map_destination(&p.destination) || p.map != map_hash(&p.destination) {
                 return None;
             }
+            p.map_label = read_map_label(&mut r)?;
         }
         if p.kind == kind::HELLO {
             let length = r.int(1)? as usize;
@@ -1571,6 +1616,7 @@ pub fn decode(bytes: &[u8]) -> Option<Packet> {
             if bad {
                 return None;
             }
+            p.map_label = read_map_label(&mut r)?;
         }
     } else if p.kind == kind::POSE {
         let skater = r.int(2)? as usize;
@@ -1753,6 +1799,17 @@ pub fn decode(bytes: &[u8]) -> Option<Packet> {
                 return None;
             }
             p.maps.push(asset);
+        }
+        let pooled = r.int(2)? as usize;
+        if pooled > p.maps.len() {
+            return None;
+        }
+        for _ in 0..pooled {
+            p.map_pool.push(r.int(2)? as u16);
+        }
+        p.map_rotation = r.int(2)? as u16;
+        if !valid_map_pool(&p.map_pool, p.maps.len()) || u32::from(p.map_rotation) > MAX_MAP_ROTATION {
+            return None;
         }
     } else if p.kind == kind::BANS {
         p.ban_total = r.int(4)? as u32;

@@ -4,7 +4,7 @@
 
 - Linux x86_64 with glibc 2.31 or newer
 - `steamclient.so` from SteamCMD – the server signs in to Steam anonymously through it
-- Players and the server must run the **same ReSkate version** (this build: 1.1.1)
+- Players and the server must run the **same ReSkate version** (this build: 1.1.2)
 
 ## 1. Install SteamCMD
 
