@@ -471,7 +471,7 @@ impl Host {
     }
     // Listed in the server browser: set so, and with a name clients show.
     fn listed(&self) -> bool {
-        self.config.listed && !contains_bad_words(&self.config.name)
+        self.config.listed && valid_server_name(&self.config.name) && !contains_bad_words(&self.config.name)
     }
     fn plugin_snapshot(&self) -> Snapshot {
         Snapshot {
@@ -1927,8 +1927,8 @@ impl Host {
                 self.changed(text, console)
             }
             "name" => {
-                if argument.is_empty() || argument.len() > 64 || !valid_member_name(argument.as_bytes()) {
-                    return "Server names are 1 to 64 characters.".into();
+                if !valid_server_name(argument) {
+                    return format!("Server names are {SERVER_NAME_RULE}.");
                 }
                 self.config.name = argument.to_string();
                 if contains_bad_words(&self.config.name) {

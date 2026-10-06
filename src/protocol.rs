@@ -844,6 +844,19 @@ fn valid_line(text: &[u8]) -> bool {
 }
 
 // A player name in a hello or roster: UTF-8 without control characters.
+// A dedicated server's name (session_model.h valid_server_name): 1 to 64 letters, digits, spaces
+// and - _ [ ] ( ), with a letter or digit among them and no space at either end. Clients from
+// ReSkate 1.1.3 on do not show a server with any other name in the server browser.
+pub const SERVER_NAME_RULE: &str = "1 to 64 letters, numbers, spaces and - _ [ ] ( )";
+pub fn valid_server_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= 64
+        && !name.starts_with(' ')
+        && !name.ends_with(' ')
+        && name.bytes().all(|c| c.is_ascii_alphanumeric() || b" -_[]()".contains(&c))
+        && name.bytes().any(|c| c.is_ascii_alphanumeric())
+}
+
 pub fn valid_member_name(text: &[u8]) -> bool {
     text.len() <= MAX_MEMBER_NAME && valid_line(text)
 }

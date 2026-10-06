@@ -11,7 +11,7 @@ pub const BANNED_NOTICE: &str = "You are banned from ReSkate multiplayer.";
 const MAX_BYTES: u64 = 256 * 1024;
 // The categories the answer carries besides the bans. Not used here, but an answer whose lists
 // are not lists of players is not the lists, and lifts no ban.
-const CATEGORIES: [&str; 3] = ["dev", "homie", "content_creator"];
+const CATEGORIES: [&str; 4] = ["dev", "homie", "content_creator", "centrix"];
 
 // A player's SteamID64 is 76561197960265728 plus a 32-bit account number, and nobody has
 // account 0. The API sends them as strings.
