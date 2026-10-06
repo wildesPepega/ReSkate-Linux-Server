@@ -41,6 +41,7 @@ pub struct ServerConfig {
     pub map: String,
     pub map_pool: Vec<String>, // maps for votes and the rotation, in order; empty: every map
     pub map_rotation: u32,     // minutes per map before the next pool map (0: off)
+    pub map_mods: Vec<String>, // Thunderstore links of custom maps fetched at startup (src/thunderstore.rs)
     pub max_players: u32,
     pub password: String,
     pub welcome: String,
@@ -93,6 +94,7 @@ impl Default for ServerConfig {
             map: "San Vansterdam".into(),
             map_pool: Vec::new(),
             map_rotation: 0,
+            map_mods: Vec::new(),
             max_players: 16,
             password: String::new(),
             welcome: String::new(),
@@ -147,6 +149,7 @@ fn to_json(c: &ServerConfig) -> Value {
     root.insert("map".into(), c.map.clone().into());
     root.insert("map_pool".into(), Value::Array(c.map_pool.iter().map(|m| m.clone().into()).collect()));
     root.insert("map_rotation_minutes".into(), c.map_rotation.into());
+    root.insert("map_mods".into(), Value::Array(c.map_mods.iter().map(|m| m.clone().into()).collect()));
     root.insert("max_players".into(), c.max_players.into());
     root.insert("password".into(), c.password.clone().into());
     root.insert("welcome".into(), c.welcome.clone().into());
@@ -319,6 +322,9 @@ pub fn load_config(file: &Path, added: &mut Vec<String>) -> Result<ServerConfig,
         c.map_pool = list.iter().filter_map(|m| m.as_str()).filter(|m| !m.is_empty()).map(str::to_string).collect();
     }
     c.map_rotation = read_u32(&root, "map_rotation_minutes", c.map_rotation)?.min(MAX_MAP_ROTATION);
+    if let Some(Value::Array(list)) = root.get("map_mods") {
+        c.map_mods = list.iter().filter_map(|m| m.as_str()).map(str::trim).filter(|m| !m.is_empty()).map(str::to_string).collect();
+    }
     c.max_players = read_u32(&root, "max_players", c.max_players)?;
     c.password = read_string(&root, "password", &c.password)?;
     c.welcome = read_string(&root, "welcome", &c.welcome)?;

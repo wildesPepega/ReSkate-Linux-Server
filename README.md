@@ -61,7 +61,7 @@ Everything the Windows dedicated server does, plus a few things it doesn't:
 - Speed check and score check (anti-cheat), activity log
 - Object sync / park editor, throwdowns, voice relay with proximity range
 - World layer sync (time of day), park layouts, password, bans, and the ReSkate team's global bans ([docs](docs/configuration.md#fields))
-- Custom maps from a `Mods/` folder
+- Custom maps from a `Mods/` folder, or fetched from Thunderstore links (`map_mods`)
 - Clean shutdown on `quit`, Ctrl+C, SIGTERM and SIGHUP (signs out of Steam first)
 - **Lua plugins**: custom `/commands`, automatic messages, timers, events and saved data ([docs](docs/plugins.md))
 - **Self-updating**: installs new releases on its own seconds after the server is empty, after checking

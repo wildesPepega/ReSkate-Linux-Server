@@ -4,7 +4,7 @@
         "version": "PTDL_v2",
         "update_url": "https://raw.githubusercontent.com/wildesPepega/ReSkate-Linux-Server/main/pterodactyl/egg-reskate.json"
     },
-    "exported_at": "2026-10-04T00:00:00+00:00",
+    "exported_at": "2026-10-06T00:00:00+00:00",
     "name": "ReSkate",
     "author": "68642699+wildesPepega@users.noreply.github.com",
     "description": "ReSkate dedicated server for skate. (Linux build). Players find it in the in-game server browser (Multiplayer > Servers) or join with its code. Needs a primary UDP allocation (game port) and a second one for the query port.",
@@ -46,6 +46,16 @@
             "user_viewable": true,
             "user_editable": true,
             "rules": "nullable|string|max:512",
+            "field_type": "text"
+        },
+        {
+            "name": "Map Mods",
+            "description": "Custom maps from Thunderstore: paste the map's Thunderstore link (several separated by commas). On every start the server installs or updates them in Mods/, keeping only their reskate-levels.json, and removes the ones you take out. Pin a version with a link ending in /v/<version>/. Empty: none (maps you put in Mods/ yourself stay).",
+            "env_variable": "MAP_MODS",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string|max:2048",
             "field_type": "text"
         }
     ]
