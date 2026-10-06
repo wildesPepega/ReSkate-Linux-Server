@@ -51,6 +51,19 @@ pub fn lower(text: &str) -> String {
 }
 
 // The longest prefix of `text` that is at most `limit` bytes and ends on a character boundary.
+// A direct message as the recipient reads it: "[DM from <from>] text", or "[DM from <from> to
+// <scope>] text" for a group. The text is cut so the whole line fits `limit` bytes and the marker
+// is never lost.
+pub fn dm_line(from: &str, scope: &str, text: &str, limit: usize) -> String {
+    let mut head = format!("[DM from {from}");
+    if !scope.is_empty() {
+        head += &format!(" to {scope}");
+    }
+    head += "] ";
+    let body = prefix(text, limit.saturating_sub(head.len()));
+    head + body
+}
+
 pub fn prefix(text: &str, limit: usize) -> &str {
     if text.len() <= limit {
         return text;

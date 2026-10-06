@@ -17,6 +17,9 @@
 | `status` | Name, map, players, join code. |
 | `players` | Connected players and their SteamID64s. |
 | `say <text>` | Chat as the server (console only). |
+| `msg <player> <text>` | Private message, shown to them as `[DM from <you>] ...`. |
+| `msg-party <player> <text>` | Message everyone in that player's party (`[DM from <you> to party]`). |
+| `msg-admins <text>` | Message every admin who is online (`[DM from <you> to admins]`). |
 | `kick <player>` | Kick until the server restarts. Admins cannot kick or ban each other; the console can. |
 | `ban <player or id> [name]` | Ban for good. |
 | `unban <id>` | Lift a ban. |
@@ -39,7 +42,9 @@
 | `welcome <text\|off>` | Welcome chat line. |
 | `listed on\|off` | Show in the server browser. |
 | `map <name>` | Change map, e.g. `map San Vansterdam`, `map grom`, `map bbcity`. |
-| `maps` | Maps this server knows (built-in and from `Mods/`). |
+| `maps` | Maps this server knows (built-in and from `Mods/`); `(pool)` marks the map pool. |
+| `map-pool [add\|remove <map>\|clear]` | The maps players vote between and the rotation uses (see `map_pool`). Without arguments, the pool. |
+| `rotation [<minutes>\|off]` | Change the map on a timer, 1–1440 minutes (see `map_rotation_minutes`). Without arguments, the next map and when. |
 | `tps 20\|30\|60\|120` | Network updates per second. |
 | `voice on\|off` | Voice chat. |
 | `voice-range <m>` | Proximity voice range, 50–1000 m. |
@@ -100,7 +105,7 @@ Available to every player in chat (plus any commands added by [plugins](plugins.
 
 | Command | |
 |---|---|
-| `/vote map <map>` | Start a map vote (if enabled). |
+| `/vote map <map>` | Start a map vote (if enabled); a map from the map pool. |
 | `/vote kick <player>` | Start a kick vote (if enabled). |
 | `/vote tod <time>` | Start a time-of-day vote (if enabled). |
 | `/yes`, `/no` | Vote. |
@@ -110,3 +115,4 @@ Available to every player in chat (plus any commands added by [plugins](plugins.
 | `/party leave` | Leave your party. |
 | `/party open\|close` | Let anyone join, or invites only. |
 | `/p <message>` | Party chat. |
+| `/w <player> <message>` | Private message to one player (also `/whisper`, `/tell`). |

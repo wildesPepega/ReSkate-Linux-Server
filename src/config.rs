@@ -1,7 +1,7 @@
 // ReSkateServer.json and the server's maps (Server/server_config.{h,cpp}). Every setting an
 // admin or the console changes is saved back, so a restart keeps it.
 use crate::protocol::{individual_steam_id, valid_chat_text, valid_map_destination, valid_member_name, valid_multiplayer_tps};
-use crate::protocol::{placement, valid_voice_range, Ban, Distances, DEFAULT_TPS, DEFAULT_VOICE_RANGE, MAX_PLAYERS};
+use crate::protocol::{placement, valid_voice_range, Ban, Distances, DEFAULT_TPS, DEFAULT_VOICE_RANGE, MAX_MAP_ROTATION, MAX_PLAYERS};
 use crate::world::{valid_park, world_destination_asset, world_level_name, world_level_short_name, ParkChoices, PARK_LOTS};
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
@@ -39,6 +39,8 @@ pub struct ServerConfig {
     pub file: PathBuf,
     pub name: String,
     pub map: String,
+    pub map_pool: Vec<String>, // maps for votes and the rotation, in order; empty: every map
+    pub map_rotation: u32,     // minutes per map before the next pool map (0: off)
     pub max_players: u32,
     pub password: String,
     pub welcome: String,
@@ -89,6 +91,8 @@ impl Default for ServerConfig {
             file: PathBuf::new(),
             name: "ReSkate server".into(),
             map: "San Vansterdam".into(),
+            map_pool: Vec::new(),
+            map_rotation: 0,
             max_players: 16,
             password: String::new(),
             welcome: String::new(),
@@ -141,6 +145,8 @@ fn to_json(c: &ServerConfig) -> Value {
     let mut root = Map::new();
     root.insert("name".into(), c.name.clone().into());
     root.insert("map".into(), c.map.clone().into());
+    root.insert("map_pool".into(), Value::Array(c.map_pool.iter().map(|m| m.clone().into()).collect()));
+    root.insert("map_rotation_minutes".into(), c.map_rotation.into());
     root.insert("max_players".into(), c.max_players.into());
     root.insert("password".into(), c.password.clone().into());
     root.insert("welcome".into(), c.welcome.clone().into());
@@ -309,6 +315,10 @@ pub fn load_config(file: &Path, added: &mut Vec<String>) -> Result<ServerConfig,
     }
     c.name = read_string(&root, "name", &c.name)?;
     c.map = read_string(&root, "map", &c.map)?;
+    if let Some(Value::Array(list)) = root.get("map_pool") {
+        c.map_pool = list.iter().filter_map(|m| m.as_str()).filter(|m| !m.is_empty()).map(str::to_string).collect();
+    }
+    c.map_rotation = read_u32(&root, "map_rotation_minutes", c.map_rotation)?.min(MAX_MAP_ROTATION);
     c.max_players = read_u32(&root, "max_players", c.max_players)?;
     c.password = read_string(&root, "password", &c.password)?;
     c.welcome = read_string(&root, "welcome", &c.welcome)?;
@@ -469,6 +479,13 @@ pub fn config_error(c: &ServerConfig) -> String {
             "map \"{}\" is not a known map. Use a name like \"San Vansterdam\", or put the map's mod folder in Mods next to the server.",
             c.map
         );
+    }
+    for map in &c.map_pool {
+        if find_level(map).is_none() || !valid_map_destination(&map_destination(map)) {
+            return format!(
+                "map_pool: \"{map}\" is not a single known map. Use names like \"Isle of Grom\", or put the map's mod folder in Mods next to the server."
+            );
+        }
     }
     if c.max_players < 1 || c.max_players as usize + 1 > MAX_PLAYERS {
         return format!("max_players must be 1 to {}.", MAX_PLAYERS - 1);
@@ -653,4 +670,44 @@ pub fn map_label(map: &str) -> String {
         return level.name;
     }
     world_level_name(world_destination_asset(&map_destination(map)))
+}
+
+// The maps players vote between and the rotation goes through, each once, in the pool's order;
+// every known map when the pool is empty.
+pub fn pool_levels(c: &ServerConfig) -> Vec<ServerLevel> {
+    let mut pool: Vec<ServerLevel> = Vec::new();
+    let mut add = |level: Option<ServerLevel>| {
+        if let Some(level) = level {
+            if valid_map_destination(&map_destination(&level.asset)) && !pool.iter().any(|p| same(&p.asset, &level.asset)) {
+                pool.push(level);
+            }
+        }
+    };
+    if c.map_pool.is_empty() {
+        for level in levels() {
+            add(Some(level));
+        }
+    }
+    for map in &c.map_pool {
+        add(find_level(map));
+    }
+    pool
+}
+pub fn in_map_pool(c: &ServerConfig, map: &str) -> bool {
+    if c.map_pool.is_empty() {
+        return true;
+    }
+    find_level(map).is_some_and(|level| pool_levels(c).iter().any(|p| same(&p.asset, &level.asset)))
+}
+// The pool map after `map` (the first one when `map` is not in the pool); None when there is
+// no other.
+pub fn next_pool_map(c: &ServerConfig, map: &str) -> Option<ServerLevel> {
+    let pool = pool_levels(c);
+    let current = find_level(map);
+    let is_current = |level: &ServerLevel| current.as_ref().is_some_and(|c| same(&c.asset, &level.asset));
+    let at = pool.iter().position(|l| is_current(l)).unwrap_or(pool.len());
+    (1..=pool.len())
+        .map(|step| if at == pool.len() { &pool[step - 1] } else { &pool[(at + step) % pool.len()] })
+        .find(|l| !is_current(l))
+        .cloned()
 }

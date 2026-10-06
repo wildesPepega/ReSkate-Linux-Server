@@ -4,7 +4,8 @@
 // speaks, minus the host's own skater.
 use crate::activity::{Activity, ActivityLog};
 use crate::buffers::{AppearanceBuffer, AudioBuffer, PoseBuffer};
-use crate::config::{find_level, levels, map_destination, map_label, map_setting, parse_scoring, save_config, scoring_text};
+use crate::config::{find_level, in_map_pool, levels, map_destination, map_label, map_setting, next_pool_map, parse_scoring, pool_levels};
+use crate::config::{save_config, scoring_text};
 use crate::config::{ServerConfig, VoteSetting};
 use crate::objects::{ObjectResult, ObjectState};
 use crate::party::{PartyBook, PartyResult};
@@ -13,17 +14,18 @@ use crate::plugins::{Action, PlayerInfo, PluginManager, Snapshot};
 use crate::protocol::*;
 use crate::speed::{SpeedCheck, LIMIT as SPEED_LIMIT};
 use crate::steam::{SteamTransport, TransportMessage, TransportPeer};
-use crate::text::{decimal, integer, lower, number, on_off, prefix, split, trim};
+use crate::text::{decimal, dm_line, integer, lower, number, on_off, prefix, split, trim};
 use crate::wire::{decode_wire, encode_wire, encode_wire_bytes, DeltaReceiver, DeltaSender};
 use crate::words::{contains_bad_words, mask_bad_words};
 use crate::world::{default_world_layers, pack_world_layers, park_label, valid_park, valid_world_layer_mode, world_layers, PARK_LOTS};
 use std::collections::{BTreeMap, BTreeSet};
 
-const HELP_TEXT: &str = "status | players | say <text> | kick <player> | ban <player or SteamID64> [name] | unban <SteamID64> | bans\n\
+const HELP_TEXT: &str = "status | players | say <text> | msg <player> <text> | msg-party <player> <text> | msg-admins <text> | kick <player> | ban <player or SteamID64> [name] | unban <SteamID64> | bans\n\
 map <name, e.g. San Vansterdam> | maps | name <text> | password <text|off> | welcome <text|off> | listed on|off\n\
 tps 20|30|60|120 | voice on|off | voice-range <50-1000> | distances <full> <half> <half-return> <low>\n\
 placement everyone|admins|nobody | clear-objects | noclip on|off | nobail on|off | boosts on|off | tuning on|off\n\
 tpall [player] | tphere <player> | votes [map|kick|tod on|off|<percent>] | vote-cancel\n\
+map-pool [add|remove <map>|clear] | rotation [<minutes>|off]\n\
 park <lot> <layout> | layer-sync on|off | layer <key> default|on|off | tod <time|default>\n\
 activity-log on|off | announce-throwdowns on|off | parties [on|off] | party-size <2-8> | speed-check off|warn|kick\n\
 score-check [off|warn|kick] | score-allow [<fingerprint>|remove <fingerprint>]\n\
@@ -263,6 +265,8 @@ pub struct Host {
     roster_dirty: bool,
     running: bool,
     started: u64, // when start() opened the server (crate::now_us())
+    map_since: u64,        // rotation clock start: the last map change, or while nobody is on
+    rotation_warned: bool, // players were told the next map is a minute away
     // Set while plugins handle a map change: a map they change to from there gets no event of
     // its own, so two plugins (or one) cannot send the server from map to map without end.
     in_map_event: bool,
@@ -314,6 +318,8 @@ impl Host {
             roster_dirty: true,
             running: false,
             started: 0,
+            map_since: 0,
+            rotation_warned: false,
             in_map_event: false,
             bans_revision: 1,
             now: 0,
@@ -807,6 +813,7 @@ impl Host {
     fn send_world_state(&mut self) {
         let mut state = self.packet(kind::WORLD_STATE, self.now);
         state.destination = map_destination(&self.config.map);
+        state.map_label = self.wire_map_label();
         state.world_ready = true; // the server has nothing to load
         let bytes = encode_wire(&state);
         let ids: Vec<u64> = self.guests.iter().filter(|(_, g)| g.handshaken).map(|(&id, _)| id).collect();
@@ -853,16 +860,50 @@ impl Host {
         }
     }
 
-    // The maps an admin may switch to: the retail ones and the server's custom maps.
-    fn send_maps(&mut self, admin: u64) {
+    // The map's name as map offers and world states carry it, so players without the map's mod
+    // still see which map it is.
+    fn wire_map_label(&self) -> String {
+        let label = prefix(&self.map_name(), MAX_MEMBER_NAME).to_string();
+        if valid_map_label(&label) {
+            label
+        } else {
+            String::new()
+        }
+    }
+
+    // Admins: every map the server knows, and the pool as indices into them. Players: the pool.
+    fn send_maps(&mut self, id: u64) {
         let mut list = self.packet(kind::MAPS, self.now);
-        for level in levels() {
-            if valid_map_asset(&level.asset) && list.maps.len() < MAX_SERVER_MAPS {
-                list.maps.push(level.asset);
+        let add = |asset: String, maps: &mut Vec<String>| {
+            if valid_map_asset(&asset) && maps.len() < MAX_SERVER_MAPS {
+                maps.push(asset);
+            }
+        };
+        if self.is_admin(id) {
+            for level in levels() {
+                add(level.asset, &mut list.maps);
+            }
+            if !self.config.map_pool.is_empty() {
+                for level in pool_levels(&self.config) {
+                    if let Some(at) = list.maps.iter().position(|asset| *asset == level.asset) {
+                        list.map_pool.push(at as u16);
+                    }
+                }
+            }
+        } else {
+            for level in pool_levels(&self.config) {
+                add(level.asset, &mut list.maps);
             }
         }
-        if self.send_packet(admin, &list, true, false) {
-            guest!(self, admin).maps_sent = true;
+        list.map_rotation = self.config.map_rotation.min(MAX_MAP_ROTATION) as u16;
+        if self.send_packet(id, &list, true, false) {
+            guest!(self, id).maps_sent = true;
+        }
+    }
+    // After the pool, the rotation or the admins change: everyone gets their list again.
+    fn resend_maps(&mut self) {
+        for g in self.guests.values_mut() {
+            g.maps_sent = false;
         }
     }
 
@@ -899,6 +940,8 @@ impl Host {
         self.config.map = map_setting(map);
         self.map = map_hash(&map_destination(&self.config.map));
         self.travel_started = now;
+        self.map_since = now;
+        self.rotation_warned = false;
         self.last_world_state = 0;
         self.send_world_state();
         self.roster_dirty = true;
@@ -1064,6 +1107,7 @@ impl Host {
                     let challenge = link.password_challenge;
                     let mut offer = self.packet(kind::MAP_OFFER, now);
                     offer.destination = map_destination(&self.config.map);
+                    offer.map_label = self.wire_map_label();
                     offer.challenge = challenge;
                     offer.map_authorized = authorized;
                     self.send_required(peer, &encode_wire(&offer));
@@ -1582,6 +1626,7 @@ impl Host {
         if self.vote.as_ref().is_some_and(|v| now >= v.ends) {
             self.check_vote(true);
         }
+        self.tick_rotation();
         self.vote_cooldowns.retain(|_, until| now < *until);
         self.join_backoff.prune(now);
         if self.plugins.due(now) {
@@ -1689,6 +1734,51 @@ impl Host {
                 self.send_chat(argument, None);
                 format!("[chat] Server: {}", clean_chat_text(argument))
             }
+            "msg" | "msg-party" | "msg-admins" => {
+                // Direct messages from the console or an admin, marked "[DM from ...]" so nobody
+                // takes them for chat.
+                let from = if console { "Server".to_string() } else { self.name_of(admin) };
+                let to_admins = name == "msg-admins";
+                let (who, text) = if to_admins { ("", trim(argument)) } else { split(argument) };
+                if text.is_empty() {
+                    return if to_admins { "msg-admins <text>".into() } else { format!("{name} <player> <text>") };
+                }
+                let mut recipients: Vec<u64> = Vec::new();
+                let (scope, label);
+                if to_admins {
+                    scope = "admins";
+                    label = "admins".to_string();
+                    recipients = self.guests.iter().filter(|(&id, g)| g.handshaken && self.is_admin(id)).map(|(&id, _)| id).collect();
+                } else {
+                    let Some(player) = self.match_player(who) else {
+                        return no_match(who);
+                    };
+                    if name == "msg" {
+                        scope = "";
+                        label = self.name_of(player);
+                        recipients.push(player);
+                    } else {
+                        let Some(details) = self.parties.party(self.parties.party_of(player)) else {
+                            return format!("{} is not in a party.", self.name_of(player));
+                        };
+                        scope = "party";
+                        label = format!("{}'s party", self.name_of(player));
+                        recipients = details.members.iter().copied().filter(|&m| self.handshaken(m)).collect();
+                    }
+                }
+                if recipients.is_empty() {
+                    return "No admins are online.".into();
+                }
+                let message = dm_line(&from, scope, text, CHAT_MAX_BYTES);
+                for &id in &recipients {
+                    self.send_chat(&message, Some(id));
+                }
+                if !console {
+                    self.log(&format!("[dm] {from} -> {label}: {}", clean_chat_text(text)));
+                }
+                let count = if recipients.len() > 1 || to_admins { format!(" ({} players)", recipients.len()) } else { String::new() };
+                format!("Sent to {label}{count}.")
+            }
             "kick" => {
                 let Some(id) = self.target(argument).filter(|&id| self.handshaken(id)) else {
                     return no_match(argument);
@@ -1772,9 +1862,69 @@ impl Host {
                 let mut text = format!("{} maps (custom maps come from Mods next to the server)", list.len());
                 for level in list {
                     let now = map_hash(&map_destination(&level.asset)) == self.map;
-                    text += &format!("\n  {}{}", level.name, if now { "  (now)" } else { "" });
+                    let pooled = !self.config.map_pool.is_empty() && in_map_pool(&self.config, &level.asset);
+                    text += &format!("\n  {}{}{}", level.name, if now { "  (now)" } else { "" }, if pooled { "  (pool)" } else { "" });
                 }
                 text
+            }
+            "map-pool" => {
+                let (what_text, map) = split(argument);
+                let what = lower(what_text);
+                if what.is_empty() {
+                    return self.pool_text();
+                }
+                if what == "clear" {
+                    self.config.map_pool.clear();
+                    self.resend_maps();
+                    return self.changed(
+                        "The map pool is cleared: players vote between every map, and the rotation goes through them all.".into(),
+                        console,
+                    );
+                }
+                if what != "add" && what != "remove" {
+                    return "map-pool [add|remove <map>|clear]".into();
+                }
+                let Some(level) = find_level(map).filter(|l| valid_map_destination(&map_destination(&l.asset))) else {
+                    return format!("No single map is called \"{map}\". Type maps for the list.");
+                };
+                let pooled = |entry: &String| find_level(entry).is_some_and(|l| l.asset == level.asset);
+                let listed = self.config.map_pool.iter().any(pooled);
+                if what == "add" {
+                    if listed || self.config.map_pool.is_empty() {
+                        return format!("{} is already in the map pool.", level.name);
+                    }
+                    self.config.map_pool.push(level.name.clone());
+                } else {
+                    if self.config.map_pool.is_empty() {
+                        // Every map: keep all the others.
+                        self.config.map_pool = pool_levels(&self.config).into_iter().map(|l| l.name).collect();
+                    } else if !listed {
+                        return format!("{} is not in the map pool.", level.name);
+                    }
+                    if self.config.map_pool.iter().all(pooled) {
+                        return "The map pool needs at least one map. map-pool clear allows every map again.".into();
+                    }
+                    self.config.map_pool.retain(|entry| !pooled(entry));
+                }
+                self.resend_maps();
+                let text = format!("{} {} the map pool.", level.name, if what == "add" { "added to" } else { "removed from" });
+                self.changed(text, console)
+            }
+            "rotation" => {
+                if argument.is_empty() {
+                    return self.rotation_text();
+                }
+                let value = lower(argument);
+                let minutes = if value == "off" { Some(0) } else { number(&value) };
+                let Some(minutes) = minutes.filter(|&m| m <= u64::from(MAX_MAP_ROTATION)) else {
+                    return "rotation <1-1440 minutes>|off".into();
+                };
+                self.config.map_rotation = minutes as u32;
+                self.map_since = self.now;
+                self.rotation_warned = false;
+                self.resend_maps();
+                let text = self.rotation_text();
+                self.changed(text, console)
             }
             "name" => {
                 if argument.is_empty() || argument.len() > 64 || !valid_member_name(argument.as_bytes()) {
@@ -2245,10 +2395,12 @@ impl Host {
                         if !self.is_admin(id) {
                             self.config.admins.push(id);
                         }
+                        self.resend_maps();
                         self.changed(format!("{id} is an admin."), console)
                     }
                     "remove" => {
                         self.config.admins.retain(|&a| a != id);
+                        self.resend_maps();
                         self.changed(format!("{id} is no longer an admin."), console)
                     }
                     _ => "admin add|remove <player or SteamID64>".into(),
@@ -2536,6 +2688,61 @@ impl Host {
         matched
     }
 
+    // ---- Map pool and rotation ----------------------------------------------------------------
+    fn pool_text(&self) -> String {
+        if self.config.map_pool.is_empty() {
+            return "Map pool: every map".into();
+        }
+        let mut text = "Map pool:".to_string();
+        for level in pool_levels(&self.config) {
+            let now = map_hash(&map_destination(&level.asset)) == self.map;
+            text += &format!("\n  {}{}", level.name, if now { "  (now)" } else { "" });
+        }
+        text
+    }
+    fn rotation_text(&self) -> String {
+        if self.config.map_rotation == 0 {
+            return "Map rotation is off.".into();
+        }
+        let every = format!("The map changes every {} min", self.config.map_rotation);
+        let Some(next) = next_pool_map(&self.config, &self.config.map) else {
+            return format!("{every}, but the map pool has no other map.");
+        };
+        if self.players() == 0 {
+            return format!("{every} while players are on. Next: {}.", next.name);
+        }
+        let due = self.map_since + u64::from(self.config.map_rotation) * 60_000_000;
+        let left = if due > self.now { (due - self.now + 59_999_999) / 60_000_000 } else { 0 };
+        format!("{every}. Next: {} in about {} min.", next.name, left.max(1))
+    }
+    // The rotation's clock waits while nobody is on, and for a running map vote.
+    fn tick_rotation(&mut self) {
+        if self.config.map_rotation == 0 || self.players() == 0 {
+            self.map_since = self.now;
+            self.rotation_warned = false;
+            return;
+        }
+        let due = self.map_since + u64::from(self.config.map_rotation) * 60_000_000;
+        if self.now + 60_000_000 < due {
+            return;
+        }
+        let Some(next) = next_pool_map(&self.config, &self.config.map) else {
+            self.map_since = self.now;
+            return;
+        };
+        if !self.rotation_warned && self.config.map_rotation > 1 {
+            self.rotation_warned = true;
+            self.send_chat(&format!("Next map in 1 minute: {}.", next.name), None);
+        }
+        if self.now < due || self.vote.as_ref().is_some_and(|v| v.kind == VoteKind::Map) {
+            return;
+        }
+        self.send_chat(&format!("Changing the map to {}.", next.name), None);
+        self.log(&format!("[rotation] Changing the map to {}.", next.name));
+        self.change_map(&next.name);
+        self.save();
+    }
+
     fn chat_command(&mut self, id: u64, line: &str) {
         let (first, rest) = split(line);
         let verb = lower(first);
@@ -2560,6 +2767,9 @@ impl Host {
             if votes != 0 {
                 text += "/yes or /no: vote in the running vote\n";
             }
+            if self.config.map_rotation != 0 {
+                text += &format!("The map changes every {} min.\n", self.config.map_rotation);
+            }
             if self.config.parties {
                 text += "/party: your party (invite, accept, leave...; /party help); /p <message>: party chat\n";
             }
@@ -2569,10 +2779,10 @@ impl Host {
                 text += "\n";
             }
             if self.is_admin(id) {
-                text += "Admins: any server command as /<command>, e.g. /kick, /map, /tpall, /votes\n";
+                text += "Admins: any server command as /<command>, e.g. /kick, /map, /tpall, /votes, /msg, /msg-party, /msg-admins\n";
             }
-            let text = if text.is_empty() { "This server has no player votes. Type /tp <player> to teleport.".to_string() } else { text };
-            return self.reply(id, &text);
+            let text = if text.is_empty() { "This server has no player votes. Type /tp <player> to teleport.\n".to_string() } else { text };
+            return self.reply(id, &(text + "/w <player> <message>: send a private message"));
         }
         if verb == "party" {
             return self.party_command(id, rest);
@@ -2582,6 +2792,23 @@ impl Host {
                 return self.reply(id, "Parties are off on this server.");
             }
             return self.party_chat(id, rest);
+        }
+        if verb == "w" || verb == "whisper" || verb == "tell" {
+            // A private message to one player, marked "[DM from ...]"; the sender sees an echo.
+            let (who, text) = split(rest);
+            if text.is_empty() {
+                return self.reply(id, "/w <player> <message>, e.g. /w player hello");
+            }
+            let Some(other) = self.match_player(who) else {
+                return self.reply(id, &format!("No single connected player matches \"{who}\"."));
+            };
+            if other == id {
+                return self.reply(id, "You cannot message yourself.");
+            }
+            let message = dm_line(&self.name_of(id), "", text, CHAT_MAX_BYTES);
+            self.send_chat(&message, Some(other));
+            let echo = format!("[DM to {}] {}", self.name_of(other), clean_chat_text(text));
+            return self.reply(id, &echo);
         }
         if verb == "yes" || verb == "y" {
             return self.cast_vote(id, true);
@@ -2673,8 +2900,12 @@ impl Host {
                     return self.reply(id, "/vote map <map>, e.g. /vote map grom");
                 }
                 // Players vote between the server's own maps; a raw level path is admins only.
-                if find_level(argument).is_none() || !valid_map_destination(&map_destination(argument)) {
+                let Some(level) = find_level(argument).filter(|_| valid_map_destination(&map_destination(argument))) else {
                     return self.reply(id, &format!("No single map is called \"{argument}\"."));
+                };
+                if !in_map_pool(&self.config, &level.asset) {
+                    let text = format!("{} is not one of this server's maps.\n{}", level.name, self.pool_text());
+                    return self.reply(id, &text);
                 }
                 if map_hash(&map_destination(argument)) == self.map {
                     return self.reply(id, "The server is already on that map.");

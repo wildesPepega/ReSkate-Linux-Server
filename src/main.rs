@@ -346,9 +346,22 @@ fn run() -> i32 {
         write_log(&format!("Mods: {} custom map(s).", level_count - 6));
     }
     // Older configs name the map by its full destination; keep the plain name instead.
+    let mut renamed = false;
     let setting = map_setting(&config.map);
     if setting != config.map && !setting.is_empty() {
         config.map = setting;
+        renamed = true;
+    }
+    // Short pool names ("isle") are saved in full.
+    for map in &mut config.map_pool {
+        if let Some(level) = config::find_level(map) {
+            if level.name != *map {
+                *map = level.name;
+                renamed = true;
+            }
+        }
+    }
+    if renamed {
         let _ = save_config(&config);
     }
     // A hosting panel hands out the ports; they win over the file.
