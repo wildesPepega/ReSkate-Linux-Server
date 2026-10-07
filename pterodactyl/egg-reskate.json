@@ -4,7 +4,7 @@
         "version": "PTDL_v2",
         "update_url": "https://raw.githubusercontent.com/wildesPepega/ReSkate-Linux-Server/main/pterodactyl/egg-reskate.json"
     },
-    "exported_at": "2026-10-06T00:00:00+00:00",
+    "exported_at": "2026-10-07T00:00:00+00:00",
     "name": "ReSkate",
     "author": "68642699+wildesPepega@users.noreply.github.com",
     "description": "ReSkate dedicated server for skate. (Linux build). Players find it in the in-game server browser (Multiplayer > Servers) or join with its code. Needs a primary UDP allocation (game port) and a second one for the query port.",
@@ -56,6 +56,16 @@
             "user_viewable": true,
             "user_editable": true,
             "rules": "nullable|string|max:2048",
+            "field_type": "text"
+        },
+        {
+            "name": "Steam Token",
+            "description": "Optional Steam game server login token (steamcommunity.com/dev/managegameservers, App ID 3354750; one per server). With it the server keeps the same Steam ID every start, and it stays in the server browser if the ReSkate team shows only servers with a token. Empty: anonymous sign-in.",
+            "env_variable": "STEAM_TOKEN",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string|alpha_num|max:64",
             "field_type": "text"
         }
     ]

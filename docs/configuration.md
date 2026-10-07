@@ -49,6 +49,7 @@ the console or by an admin in game is saved back to this file.
   "score_check": "warn",
   "speed_check": "warn",
   "status": { "enabled": true, "players": true },
+  "steam_token": "",
   "tps": 30,
   "voice_chat": true,
   "voice_range": 300.0,
@@ -70,7 +71,7 @@ the console or by an admin in game is saved back to this file.
 
 | Field | Default | |
 |---|---|---|
-| `name` | `"ReSkate server"` | Shown in the server browser: 1–64 letters, numbers, spaces and `- _ [ ] ( )`, no space at either end. ReSkate 1.1.3 and newer hide servers with any other name; such a server still runs (unlisted) and says so in the log. |
+| `name` | `"ReSkate server"` | Shown in the server browser: 1–64 letters, numbers, spaces and `- _ / [ ] ( )`, no space at either end. ReSkate 1.1.3 and newer hide servers with any other name (`/` is allowed from 1.1.4 on; older games hide a name with one); such a server still runs (unlisted) and says so in the log. |
 | `map` | `"San Vansterdam"` | The map everyone skates, named like the game's load command: `"San Vansterdam"`, `"Isle of Grom"`, `"Super Ultra Mega Resort"`, `"Stadium 1"`, or a custom map such as `"bbcity"`. |
 | `map_pool` | `[]` | The maps players may vote for and the rotation goes through, in order, e.g. `["San Vansterdam", "Isle of Grom", "bbcity"]`. Empty allows every map the server knows. Admins can still change to any map. Also `map-pool` in the console. |
 | `map_mods` | `[]` | Custom maps from [Thunderstore](installation.md#maps-from-thunderstore), by their links, e.g. `["https://thunderstore.io/c/<game>/p/<owner>/<map>/"]`. Installed and updated at every start; only their `reskate-levels.json` is kept. Also `map-mods add` / `remove` in the console. Links from `--map-mods` or a hosting panel's `MAP_MODS` variable are installed as well, but not saved here. |
@@ -78,6 +79,7 @@ the console or by an admin in game is saved back to this file.
 | `max_players` | `16` | 1–249. |
 | `password` | `""` | Empty for anyone; otherwise players type it to join. |
 | `welcome` | `""` | A chat line sent to each player as they join. |
+| `steam_token` | `""` | A Steam game server login token, or empty. Empty: the server signs in anonymously and gets a new Steam ID every start. With a token it keeps the same Steam ID (printed at startup). Make one at [steamcommunity.com/dev/managegameservers](https://steamcommunity.com/dev/managegameservers) with **App ID 3354750**; each running server needs its own. Keep it private: anyone with it can sign in as your server. The ReSkate team can set the server browser to show **only servers with a token**; the log says when that hides this server (players can still join with the code). On Pterodactyl: the **Steam Token** variable. |
 | `listed` | `true` | `false` hides the server from the browser; players then need the code. |
 | `auto_update` | `true` | Install new Linux builds on their own once the server is empty (see [installation.md](installation.md#updates)). |
 | `global_bans` | `true` | Turn away players the ReSkate team has banned from multiplayer ("You are banned from ReSkate multiplayer."), also when they are already on. The list is read from `api.reskate.dev` at startup and every ten minutes (a minute after a failure); while it cannot be read, the bans already read hold. `false` lets them in; the server's own `bans` apply either way. |

@@ -453,19 +453,37 @@ fn run() -> i32 {
     }
 
     link_steam_client(&here);
-    let mut steam = match SteamServer::start(&here, config.port, config.query_port) {
+    // A panel's STEAM_TOKEN (egg variable) wins over the file, like its ports. It stays out of
+    // the config, so the server never writes it into the file.
+    let mut token = config.steam_token.clone();
+    if let Ok(panel) = std::env::var("STEAM_TOKEN") {
+        let panel = text::trim(&panel).to_string();
+        if !panel.is_empty() {
+            if !config::valid_steam_token(&panel) {
+                write_log("STEAM_TOKEN must be a game server login token (letters and digits).");
+                return 1;
+            }
+            token = panel;
+        }
+    }
+    let tokened = !token.is_empty();
+    let mut steam = match SteamServer::start(&here, config.port, config.query_port, &token) {
         Ok(steam) => steam,
         Err(e) => {
             write_log(&e);
             return 1;
         }
     };
-    write_log("Signing in to Steam...");
+    write_log(if tokened { "Signing in to Steam with steam_token..." } else { "Signing in to Steam..." });
     let login_started = Instant::now();
     while !steam.logged_on() && !STOPPING.load(Ordering::SeqCst) {
         steam.run_callbacks();
         if login_started.elapsed() > Duration::from_secs(60) {
-            write_log("Steam sign-in timed out after 60 s. Check the internet connection and try again.");
+            write_log(if tokened {
+                "Steam sign-in timed out after 60 s. Steam may not have accepted steam_token: it must be a token for app 3354750 that no other running server is using. Or check the internet connection."
+            } else {
+                "Steam sign-in timed out after 60 s. Check the internet connection and try again."
+            });
             return 1;
         }
         std::thread::sleep(Duration::from_millis(20));
@@ -489,12 +507,22 @@ fn run() -> i32 {
     }
     host.load_plugins(&here.join("plugins"));
     write_log(&format!("{} is up on {} for {} players.", host.config.name, host.map_name(), host.config.max_players));
-    write_log(&format!("Steam ID {}, public IP {}.", steam.steam_id(), steam.public_ip()));
+    write_log(&format!(
+        "Steam ID {} ({}), public IP {}.",
+        steam.steam_id(),
+        if tokened { "from steam_token: the same every start" } else { "anonymous: new every start; set steam_token to keep one" },
+        steam.public_ip()
+    ));
     write_log(&format!(
         "Join code: {}{}",
         host.invite(),
         if host.config.password.is_empty() { "" } else { " (password required)" }
     ));
+    if !tokened && host.config.listed {
+        write_log(
+            "No steam_token: the server browser can be set to show only servers that have one, and then this server is not in it (players can still join with the code). It takes a minute to make one: see steam_token in docs/configuration.md.",
+        );
+    }
     write_log(&if host.config.admins.is_empty() {
         "No admins yet: type \"admin add <SteamID64>\" to add one.".to_string()
     } else {
@@ -518,10 +546,11 @@ fn run() -> i32 {
     let mut next_status = Instant::now();
     // The backend's ban list (src/global_bans.rs): read now and every ten minutes, a minute after
     // a failure. Said when it changes, not every ten minutes.
-    let mut ban_check: Option<Receiver<Result<Vec<u64>, String>>> = None;
+    let mut ban_check: Option<Receiver<global_bans::BanCheck>> = None;
     let mut next_ban_check = Instant::now();
     let mut last_bans: Option<Vec<u64>> = None;
     let mut bans_unread = false;
+    let mut tokens_required = false; // last seen: whether the browser wants a steam_token
     if !host.config.global_bans {
         write_log("Global bans are off (\"global_bans\": false): only this server's own bans apply.");
     }
@@ -704,8 +733,20 @@ fn run() -> i32 {
         }
         if let Some(receiver) = &ban_check {
             match receiver.try_recv() {
-                Ok(Ok(ids)) => {
+                Ok(Ok((ids, required))) => {
                     next_ban_check = now + Duration::from_secs(10 * 60);
+                    // The ReSkate team's rule, read with its ban list: say when it starts or stops
+                    // hiding this server.
+                    if required != tokens_required {
+                        tokens_required = required;
+                        if !tokened && host.config.listed {
+                            write_log(if required {
+                                "The server browser now shows only servers with a steam_token, so this server is hidden from it. Add a steam_token (see docs/configuration.md) to be listed again."
+                            } else {
+                                "The server browser shows servers without a steam_token again."
+                            });
+                        }
+                    }
                     if last_bans.as_ref() != Some(&ids) || bans_unread {
                         write_log(&format!("Global bans: {} player(s) banned from ReSkate multiplayer cannot join.", ids.len()));
                     }

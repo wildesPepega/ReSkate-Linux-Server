@@ -17,7 +17,7 @@ config fields and console messages. The differences are:
 | Map mods | Copied into `Mods/` by hand | Also fetched from Thunderstore links (`map_mods`), keeping only `reskate-levels.json` ([installation.md](installation.md#maps-from-thunderstore)) |
 | Plugins | – | Lua plugins for custom commands, automatic messages, timers and events ([plugins.md](plugins.md)) |
 | Shutdown | Closing the window | `quit`, Ctrl+C, SIGTERM, SIGHUP – all sign out of Steam first |
-| Server name rule | A config `name` outside the rule (letters, numbers, spaces, `- _ [ ] ( )`) stops the server from starting | The server starts, stays out of the server browser, and the log says how to rename it, so an automatic update never leaves a server down |
+| Server name rule | A config `name` outside the rule (letters, numbers, spaces, `- _ / [ ] ( )`) stops the server from starting | The server starts, stays out of the server browser, and the log says how to rename it, so an automatic update never leaves a server down |
 
 Existing `ReSkateServer.json` files, `Mods/` folders and `world-layers.json` from a Windows server can
 be copied over unchanged.
