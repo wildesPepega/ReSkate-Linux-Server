@@ -40,6 +40,7 @@ also updates it; the config, `Mods/`, `plugins/` and logs are kept.
 | Query Port | `QUERY_PORT` | `27016` | Second UDP allocation, Steam server queries |
 | Download URL | `DOWNLOAD_URL` | latest release of this repo | Archive to install, empty = manual upload |
 | Map Mods | `MAP_MODS` | empty | Thunderstore links of custom maps, separated by commas |
+| Steam Token | `STEAM_TOKEN` | empty | Steam game server login token (App ID 3354750), see [`steam_token`](configuration.md#general). Wins over the config file. |
 
 ## Startup
 
@@ -73,5 +74,5 @@ commas) and restart; clear a link there to remove that map again. See
 Maps that are not on Thunderstore: create a `Mods/` folder in the file manager and upload the map's
 mod folder into it (see [installation.md](installation.md#custom-maps)).
 
-The Map Mods variable comes with the egg from release 1.1.3-1: import the egg again (Nests → ReSkate
+The Steam Token variable comes with the egg from release 1.1.4. The Map Mods variable comes with the egg from release 1.1.3-1: import the egg again (Nests → ReSkate
 → Import, or update it from its `update_url`) to get it. Older eggs keep working.

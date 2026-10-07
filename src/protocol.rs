@@ -135,14 +135,18 @@ pub fn valid_party_request(action: u8, player: u64) -> bool {
     }
 }
 
-// Steam accounts in the public universe. Players are individual accounts; a dedicated server
-// signs in anonymously as a game server (type 3 or 4) and gets a new ID each time it starts.
+// Steam accounts in the public universe. Players are individual accounts; a dedicated server is
+// a game server: anonymous (type 4) with a new ID each time it starts, or signed in with a login
+// token (type 3, "steam_token") with the same ID always.
 pub fn individual_steam_id(id: u64) -> bool {
     (id >> 56) == 1 && ((id >> 52) & 15) == 1 && (id & 0xffff_ffff) != 0
 }
 pub fn game_server_steam_id(id: u64) -> bool {
     let kind = (id >> 52) & 15;
     (id >> 56) == 1 && (kind == 3 || kind == 4) && (id & 0xffff_ffff) != 0
+}
+pub fn persistent_server_steam_id(id: u64) -> bool {
+    game_server_steam_id(id) && ((id >> 52) & 15) == 3
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -845,15 +849,16 @@ fn valid_line(text: &[u8]) -> bool {
 
 // A player name in a hello or roster: UTF-8 without control characters.
 // A dedicated server's name (session_model.h valid_server_name): 1 to 64 letters, digits, spaces
-// and - _ [ ] ( ), with a letter or digit among them and no space at either end. Clients from
-// ReSkate 1.1.3 on do not show a server with any other name in the server browser.
-pub const SERVER_NAME_RULE: &str = "1 to 64 letters, numbers, spaces and - _ [ ] ( )";
+// and - _ / [ ] ( ), with a letter or digit among them and no space at either end. Clients from
+// ReSkate 1.1.3 on do not show a server with any other name in the server browser ("/" from
+// 1.1.4 on: older ones hide a name with one).
+pub const SERVER_NAME_RULE: &str = "1 to 64 letters, numbers, spaces and - _ / [ ] ( )";
 pub fn valid_server_name(name: &str) -> bool {
     !name.is_empty()
         && name.len() <= 64
         && !name.starts_with(' ')
         && !name.ends_with(' ')
-        && name.bytes().all(|c| c.is_ascii_alphanumeric() || b" -_[]()".contains(&c))
+        && name.bytes().all(|c| c.is_ascii_alphanumeric() || b" -_/[]()".contains(&c))
         && name.bytes().any(|c| c.is_ascii_alphanumeric())
 }
 

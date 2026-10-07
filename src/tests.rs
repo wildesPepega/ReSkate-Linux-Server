@@ -1119,8 +1119,8 @@ fn globally_banned_players_are_turned_away_unless_the_server_opts_out() {
 #[test]
 #[ignore]
 fn global_ban_list_reaches_the_backend() {
-    let ids = crate::global_bans::read_ban_list().unwrap();
-    println!("{} banned", ids.len());
+    let (ids, tokens_required) = crate::global_bans::read_ban_list().unwrap();
+    println!("{} banned, steam_token required: {tokens_required}", ids.len());
 }
 
 #[test]
@@ -1255,7 +1255,9 @@ fn map_pool_and_rotation_commands() {
 #[test]
 fn server_names_follow_the_browser_rule() {
     assert!(valid_server_name("Old Server") && valid_server_name("[EU] Skate_Park-2 (24x7)") && valid_server_name("a"));
-    for bad in ["", &"a".repeat(65), "Best! Server", "café", "a.b", "<b>x</b>", " padded", "padded ", "[]--()", "two\nlines"] {
+    // ReSkate 1.1.4: "/" too.
+    assert!(valid_server_name("EU/West 24/7") && SERVER_NAME_RULE.contains("- _ / [ ] ( )"));
+    for bad in ["", &"a".repeat(65), "Best! Server", "café", "a.b", "<b>x</b>", " padded", "padded ", "[]--()", "two\nlines", "///", "a\\b"] {
         assert!(!valid_server_name(bad), "accepted: {bad:?}");
     }
     let config = ServerConfig { name: "Best! Server".into(), ..Default::default() };
@@ -1442,4 +1444,48 @@ fn map_mods_command() {
     assert_eq!(config.map, "San Vansterdam");
     assert!(std::fs::read_to_string(folder.join("ReSkateServer.json")).unwrap().contains("\"map_mods\": []"));
     let _ = std::fs::remove_dir_all(&folder);
+}
+
+// ReSkate 1.1.4 (Server/Test/server_config_tests.cpp, developer_identity_tests.cpp).
+#[test]
+fn steam_token_and_server_lists() {
+    use crate::config::valid_steam_token;
+    use crate::global_bans::{parse_ban_list, parse_tokens_required};
+    // steam_token: empty (anonymous) unless set, kept on a rewrite, and only letters and digits.
+    let file = std::env::temp_dir().join(format!("reskate-token-{}.json", std::process::id()));
+    let _ = std::fs::remove_file(&file);
+    let mut added = Vec::new();
+    let mut config = load_config(&file, &mut added).unwrap();
+    assert!(config.steam_token.is_empty() && std::fs::read_to_string(&file).unwrap().contains("\"steam_token\": \"\""));
+    config.steam_token = "0123456789ABCDEF0123456789ABCDEF".into();
+    save_config(&config).unwrap();
+    assert_eq!(load_config(&file, &mut Vec::new()).unwrap().steam_token, config.steam_token);
+    assert!(valid_steam_token("") && valid_steam_token(&config.steam_token));
+    assert!(!valid_steam_token("not a token") && !valid_steam_token(&"A".repeat(65)));
+    config.steam_token = "not a token".into();
+    assert!(config_error(&config).contains("steam_token"));
+    let _ = std::fs::remove_file(&file);
+
+    // Servers: anonymous (type 4) or with a login token (type 3, the same ID every start).
+    const TOKEN_SERVER: u64 = (1 << 56) | (3 << 52) | 12345;
+    assert!(persistent_server_steam_id(TOKEN_SERVER) && !persistent_server_steam_id(SERVER));
+    assert!(game_server_steam_id(SERVER) && !persistent_server_steam_id(PLAYER));
+
+    // The backend's answer: the staff category, official and blocked servers, the token rule.
+    let answer = format!(
+        r#"{{"categories":{{"staff":["76561198000000011"]}},"banned":["76561198000000009"],"official_servers":["{TOKEN_SERVER}"],"blocked_servers":["{SERVER}"],"server_tokens_required":true}}"#
+    );
+    assert_eq!(parse_ban_list(&answer), Ok(vec![76561198000000009]));
+    assert!(parse_tokens_required(&answer));
+    assert!(!parse_tokens_required(r#"{"categories":{},"banned":[]}"#) && !parse_tokens_required("not json"));
+    assert!(!parse_tokens_required(r#"{"categories":{},"server_tokens_required":"yes"}"#));
+    // An official server must be one with a login token; any list that is not one refuses the answer.
+    for wrong in [
+        format!(r#"{{"categories":{{}},"official_servers":["{SERVER}"]}}"#),
+        r#"{"categories":{},"blocked_servers":["76561198000000009"]}"#.to_string(),
+        r#"{"categories":{"staff":["nobody"]}}"#.to_string(),
+        r#"{"categories":{},"official_servers":"x"}"#.to_string(),
+    ] {
+        assert!(parse_ban_list(&wrong).is_err(), "accepted: {wrong}");
+    }
 }

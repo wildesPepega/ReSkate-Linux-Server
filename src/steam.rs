@@ -254,10 +254,11 @@ pub struct SteamServer {
 }
 
 impl SteamServer {
-    // Loads libsteam_api.so from `folder`, next to the server.
-    pub fn start(folder: &Path, port: u16, query_port: u16) -> Result<SteamServer, String> {
+    // Loads libsteam_api.so from `folder`, next to the server. `token`: a game server login token
+    // (steam_token), or empty to sign in anonymously with a new Steam ID every start.
+    pub fn start(folder: &Path, port: u16, query_port: u16, token: &str) -> Result<SteamServer, String> {
         let mut steam = SteamServer { library: None, server: std::ptr::null_mut(), started: false, tags: Vec::new() };
-        match steam.start_inner(folder, port, query_port) {
+        match steam.start_inner(folder, port, query_port, token) {
             Ok(()) => Ok(steam),
             Err(e) => {
                 steam.stop();
@@ -266,7 +267,7 @@ impl SteamServer {
         }
     }
 
-    fn start_inner(&mut self, folder: &Path, port: u16, query_port: u16) -> Result<(), String> {
+    fn start_inner(&mut self, folder: &Path, port: u16, query_port: u16, token: &str) -> Result<(), String> {
         let quiet = QuietSteam::new();
         let path = folder.join("libsteam_api.so");
         let library = unsafe { Library::new(&path) }
@@ -309,7 +310,13 @@ impl SteamServer {
         }
         unsafe {
             symbol::<BoolSetFn>(library, "SteamAPI_ISteamGameServer_SetDedicatedServer")?(self.server, true);
-            symbol::<SelfFn>(library, "SteamAPI_ISteamGameServer_LogOnAnonymous")?(self.server);
+            if token.is_empty() {
+                symbol::<SelfFn>(library, "SteamAPI_ISteamGameServer_LogOnAnonymous")?(self.server);
+            } else {
+                // config_error lets only letters and digits through, so it has no NUL.
+                let token = std::ffi::CString::new(token).map_err(|_| "steam_token holds a NUL".to_string())?;
+                symbol::<TextFn>(library, "SteamAPI_ISteamGameServer_LogOn")?(self.server, token.as_ptr());
+            }
         }
         Ok(())
     }

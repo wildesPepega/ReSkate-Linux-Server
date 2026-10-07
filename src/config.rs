@@ -46,6 +46,10 @@ pub struct ServerConfig {
     pub password: String,
     pub welcome: String,
     pub listed: bool,
+    // A Steam game server login token (steamcommunity.com/dev/managegameservers, app 3354750).
+    // With one the server signs in to its own account and keeps the same Steam ID every start,
+    // which is how the ReSkate team's list of official servers knows it. Empty: anonymous.
+    pub steam_token: String,
     pub auto_update: bool,
     pub global_bans: bool, // turn away players the ReSkate team has banned (src/global_bans.rs)
     pub activity_log: bool,
@@ -99,6 +103,7 @@ impl Default for ServerConfig {
             password: String::new(),
             welcome: String::new(),
             listed: true,
+            steam_token: String::new(),
             auto_update: true,
             global_bans: true,
             activity_log: true,
@@ -154,6 +159,7 @@ fn to_json(c: &ServerConfig) -> Value {
     root.insert("password".into(), c.password.clone().into());
     root.insert("welcome".into(), c.welcome.clone().into());
     root.insert("listed".into(), c.listed.into());
+    root.insert("steam_token".into(), c.steam_token.clone().into());
     root.insert("auto_update".into(), c.auto_update.into());
     root.insert("global_bans".into(), c.global_bans.into());
     root.insert("activity_log".into(), c.activity_log.into());
@@ -329,6 +335,7 @@ pub fn load_config(file: &Path, added: &mut Vec<String>) -> Result<ServerConfig,
     c.password = read_string(&root, "password", &c.password)?;
     c.welcome = read_string(&root, "welcome", &c.welcome)?;
     c.listed = read_bool(&root, "listed", c.listed)?;
+    c.steam_token = read_string(&root, "steam_token", &c.steam_token)?;
     c.auto_update = read_bool(&root, "auto_update", c.auto_update)?;
     c.global_bans = read_bool(&root, "global_bans", c.global_bans)?;
     c.activity_log = read_bool(&root, "activity_log", c.activity_log)?;
@@ -476,9 +483,16 @@ pub fn parse_scoring(text: &str) -> Option<u64> {
 }
 
 // Why `config` cannot run, or empty.
+pub fn valid_steam_token(token: &str) -> bool {
+    token.len() <= 64 && token.bytes().all(|c| c.is_ascii_alphanumeric())
+}
+
 pub fn config_error(c: &ServerConfig) -> String {
     if c.name.is_empty() || c.name.len() > 64 || !valid_member_name(c.name.as_bytes()) {
         return "name must be 1 to 64 characters.".into();
+    }
+    if !valid_steam_token(&c.steam_token) {
+        return "steam_token must be a game server login token (letters and digits), or empty to sign in anonymously.".into();
     }
     if c.map.is_empty() || !valid_map_destination(&map_destination(&c.map)) {
         return format!(
