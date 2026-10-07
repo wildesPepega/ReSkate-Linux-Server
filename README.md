@@ -1,5 +1,12 @@
 # ReSkate Linux Server
 
+> [!WARNING]
+> **This project is discontinued.** It is no longer maintained and will not be updated for new ReSkate
+> releases. Since ReSkate 1.1.4 the official project ships its own Linux dedicated server: get it from
+> the [ReSkate releases](https://github.com/Dingo-Shenanigans/ReSkate/releases)
+> (`ReSkateServer-Linux-<version>.tar.gz`). This port stays on ReSkate 1.1.4 / network protocol 42;
+> once a ReSkate update changes the protocol, servers running it will no longer show up for players.
+
 > [!CAUTION]
 > **AI-generated port.** This server was ported from the original C++ Windows server to Rust
 > **entirely by Claude Opus 5.5** (Anthropic's AI model, via Claude Code). Unit tests pass and it runs
