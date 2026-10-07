@@ -44,6 +44,7 @@
 | `map <name>` | Change map, e.g. `map San Vansterdam`, `map grom`, `map bbcity`. |
 | `maps` | Maps this server knows (built-in and from `Mods/`); `(pool)` marks the map pool. |
 | `map-pool [add\|remove <map>\|clear]` | The maps players vote between and the rotation uses (see `map_pool`). Without arguments, the pool. |
+| `map-mods [add <link>\|remove <map mod>\|update]` | Custom maps from Thunderstore (see [installation.md](installation.md#maps-from-thunderstore)). `add` installs a map by its Thunderstore link, `remove` takes one out again (by link, `Owner-Name` or map name), `update` fetches newer versions now. Runs in the background; the answer comes when it is done. Without arguments, the installed map mods and their maps. Admins can use it in game as `/map-mods …`. |
 | `rotation [<minutes>\|off]` | Change the map on a timer, 1–1440 minutes (see `map_rotation_minutes`). Without arguments, the next map and when. |
 | `tps 20\|30\|60\|120` | Network updates per second. |
 | `voice on\|off` | Voice chat. |

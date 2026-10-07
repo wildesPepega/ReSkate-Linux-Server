@@ -699,6 +699,42 @@ pub fn pool_levels(c: &ServerConfig) -> Vec<ServerLevel> {
     }
     pool
 }
+// Maps that just came from Thunderstore (their assets) join a pool that names maps, or nobody
+// could vote for them; taken out again later, they stay out. The names added.
+pub fn pool_new_maps(c: &mut ServerConfig, assets: &[String]) -> Vec<String> {
+    let mut added = Vec::new();
+    if c.map_pool.is_empty() {
+        return added;
+    }
+    for asset in assets {
+        if let Some(level) = find_level(asset) {
+            if !c.map_pool.iter().any(|m| m.eq_ignore_ascii_case(&level.name)) {
+                c.map_pool.push(level.name.clone());
+                added.push(level.name);
+            }
+        }
+    }
+    added
+}
+
+// Maps whose packages were removed (names and assets) leave the pool, and the server's map falls
+// back to San Vansterdam, or the config would name maps the server cannot find and it could not
+// start again. What changed, for the log.
+pub fn drop_removed_maps(c: &mut ServerConfig, removed: &[String]) -> Vec<String> {
+    let gone = |map: &str| removed.iter().any(|r| r.eq_ignore_ascii_case(map));
+    let mut lines = Vec::new();
+    let before = c.map_pool.len();
+    c.map_pool.retain(|m| !gone(m));
+    if c.map_pool.len() != before {
+        lines.push("Map mods: removed maps were taken out of map_pool.".to_string());
+    }
+    if gone(&c.map) {
+        lines.push(format!("Map mods: {} was removed, so the server's map is San Vansterdam again.", c.map));
+        c.map = ServerConfig::default().map;
+    }
+    lines
+}
+
 pub fn in_map_pool(c: &ServerConfig, map: &str) -> bool {
     if c.map_pool.is_empty() {
         return true;

@@ -18,14 +18,17 @@ use crate::text::{decimal, dm_line, integer, lower, number, on_off, prefix, spli
 use crate::wire::{decode_wire, encode_wire, encode_wire_bytes, DeltaReceiver, DeltaSender};
 use crate::words::{contains_bad_words, mask_bad_words};
 use crate::world::{default_world_layers, pack_world_layers, park_label, valid_park, valid_world_layer_mode, world_layers, PARK_LOTS};
+use crate::thunderstore::{self, parse_package, SyncReport};
 use std::collections::{BTreeMap, BTreeSet};
+use std::path::PathBuf;
+use std::sync::mpsc::{Receiver, TryRecvError};
 
 const HELP_TEXT: &str = "status | players | say <text> | msg <player> <text> | msg-party <player> <text> | msg-admins <text> | kick <player> | ban <player or SteamID64> [name] | unban <SteamID64> | bans\n\
 map <name, e.g. San Vansterdam> | maps | name <text> | password <text|off> | welcome <text|off> | listed on|off\n\
 tps 20|30|60|120 | voice on|off | voice-range <50-1000> | distances <full> <half> <half-return> <low>\n\
 placement everyone|admins|nobody | clear-objects | noclip on|off | nobail on|off | boosts on|off | tuning on|off\n\
 tpall [player] | tphere <player> | votes [map|kick|tod on|off|<percent>] | vote-cancel\n\
-map-pool [add|remove <map>|clear] | rotation [<minutes>|off]\n\
+map-pool [add|remove <map>|clear] | rotation [<minutes>|off] | map-mods [add <Thunderstore link>|remove <map mod>|update]\n\
 park <lot> <layout> | layer-sync on|off | layer <key> default|on|off | tod <time|default>\n\
 activity-log on|off | announce-throwdowns on|off | parties [on|off] | party-size <2-8> | speed-check off|warn|kick\n\
 score-check [off|warn|kick] | score-allow [<fingerprint>|remove <fingerprint>]\n\
@@ -277,6 +280,12 @@ pub struct Host {
     next_object_update: u64,
     travel_started: u64,
     plugins: PluginManager,
+    pub mods_dir: PathBuf,
+    // Map mods a hosting panel lists (--map-mods, MAP_MODS): installed beside config.map_mods, not
+    // saved into it, and taken out only in the panel.
+    pub panel_map_mods: Vec<String>,
+    // A map-mods install running on its own thread, and who asked (0: the console).
+    pub(crate) map_mods_job: Option<(Receiver<SyncReport>, u64)>,
 }
 
 macro_rules! guest {
@@ -328,6 +337,9 @@ impl Host {
             next_object_update: 0,
             travel_started: 0,
             plugins: PluginManager::default(),
+            mods_dir: PathBuf::from("Mods"),
+            panel_map_mods: Vec::new(),
+            map_mods_job: None,
         }
     }
 
@@ -901,6 +913,146 @@ impl Host {
         }
     }
     // After the pool, the rotation or the admins change: everyone gets their list again.
+    // Every map mod the server keeps: the config's, then the panel's.
+    fn wanted_map_mods(&self) -> Vec<String> {
+        thunderstore::merge_links(&self.config.map_mods, &self.panel_map_mods)
+    }
+
+    // Installs, updates and removes map mods on a thread of its own (src/thunderstore.rs); the
+    // maps are read again when it is done (finish_map_mods).
+    pub(crate) fn start_map_mods(&mut self, admin: u64) {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let (mods, links) = (self.mods_dir.clone(), self.wanted_map_mods());
+        std::thread::spawn(move || {
+            let _ = sender.send(thunderstore::sync(&mods, &links));
+        });
+        self.map_mods_job = Some((receiver, admin));
+    }
+
+    pub(crate) fn finish_map_mods(&mut self) {
+        let Some((receiver, admin)) = &self.map_mods_job else { return };
+        let admin = *admin;
+        let report = match receiver.try_recv() {
+            Ok(report) => report,
+            Err(TryRecvError::Empty) => return,
+            Err(TryRecvError::Disconnected) => SyncReport { lines: vec!["Map mods: the install stopped unexpectedly.".into()], ..Default::default() },
+        };
+        self.map_mods_job = None;
+        let mut lines = report.lines;
+        // The server's own map cannot be removed (map-mods remove refuses it), only pool entries.
+        let map = std::mem::take(&mut self.config.map);
+        lines.extend(crate::config::drop_removed_maps(&mut self.config, &report.removed_maps));
+        self.config.map = map;
+        for problem in crate::config::load_levels(&self.mods_dir) {
+            lines.push(format!("Mods: skipped {problem}"));
+        }
+        for name in crate::config::pool_new_maps(&mut self.config, &report.new_maps) {
+            lines.push(format!("Map mods: added {name} to the map pool."));
+        }
+        let names: Vec<String> = report.new_maps.iter().filter_map(|asset| find_level(asset)).map(|l| l.name).collect();
+        if !names.is_empty() {
+            lines.push(format!("New maps: {}. Change with map <name>.", names.join(", ")));
+        }
+        if lines.is_empty() {
+            lines.push("Map mods are up to date.".into());
+        }
+        self.save();
+        self.resend_maps();
+        for line in &lines {
+            self.log(line);
+        }
+        if admin != 0 && self.guests.contains_key(&admin) {
+            for line in &lines {
+                self.reply(admin, line);
+            }
+        }
+    }
+
+    fn map_mods_command(&mut self, argument: &str, admin: u64) -> String {
+        let (what_text, which) = split(argument);
+        let what = lower(what_text);
+        let busy = "Map mods are being installed; try again when that is done.";
+        let wanted = self.wanted_map_mods();
+        let folder_of = |link: &str| parse_package(link).map(|p| p.folder());
+        match what.as_str() {
+            "" => {
+                if wanted.is_empty() {
+                    return "No map mods. map-mods add <Thunderstore link> installs one.".into();
+                }
+                let mut text = format!("{} map mods{}", wanted.len(), if self.map_mods_job.is_some() { " (installing...)" } else { "" });
+                for link in &wanted {
+                    let Some(folder) = folder_of(link) else { continue };
+                    let path = self.mods_dir.join(&folder);
+                    let version = thunderstore::installed_version(&path).unwrap_or_else(|| "not installed".into());
+                    let maps = thunderstore::installed_maps(&path).join(", ");
+                    let panel = if self.panel_map_mods.iter().any(|l| folder_of(l).as_ref() == Some(&folder)) { "  (panel)" } else { "" };
+                    text += &format!("\n  {folder} {version}{}{panel}", if maps.is_empty() { String::new() } else { format!(": {maps}") });
+                }
+                text
+            }
+            "add" => {
+                let Some(package) = parse_package(which) else {
+                    return "map-mods add <Thunderstore link>, e.g. https://thunderstore.io/c/<game>/p/<owner>/<map>/".into();
+                };
+                if self.map_mods_job.is_some() {
+                    return busy.into();
+                }
+                if wanted.iter().any(|l| folder_of(l).as_ref() == Some(&package.folder())) {
+                    return format!("{} is already listed. map-mods update fetches newer versions.", package.folder());
+                }
+                self.config.map_mods.push(trim(which).to_string());
+                self.save();
+                self.start_map_mods(admin);
+                format!("Installing {} from Thunderstore...", package.folder())
+            }
+            "remove" => {
+                let wanted_folder = parse_package(which).map(|p| p.folder()).unwrap_or_else(|| trim(which).to_string());
+                let matches = |link: &String| {
+                    parse_package(link).is_some_and(|p| {
+                        p.folder().eq_ignore_ascii_case(&wanted_folder)
+                            || p.name.eq_ignore_ascii_case(&wanted_folder)
+                            || thunderstore::installed_maps(&self.mods_dir.join(p.folder())).iter().any(|m| m.eq_ignore_ascii_case(trim(which)))
+                    })
+                };
+                if which.is_empty() {
+                    return "map-mods remove <link, owner-name or map name>".into();
+                }
+                if self.map_mods_job.is_some() {
+                    return busy.into();
+                }
+                let Some(found) = self.config.map_mods.iter().position(&matches) else {
+                    if self.panel_map_mods.iter().any(&matches) {
+                        return "That map mod comes from the panel (Map Mods variable / --map-mods): remove it there.".into();
+                    }
+                    return format!("No map mod matches \"{which}\". Type map-mods for the list.");
+                };
+                let folder = folder_of(&self.config.map_mods[found]).unwrap_or_default();
+                let path = self.mods_dir.join(&folder);
+                let current = [Some(self.config.map.clone()), find_level(&self.config.map).map(|l| l.asset)];
+                let brings = |map: &String| current.iter().flatten().any(|c| c.eq_ignore_ascii_case(map));
+                if thunderstore::installed_maps(&path).iter().chain(&thunderstore::installed_assets(&path)).any(brings) {
+                    return format!("The server is on {}, which comes with {folder}: change the map first.", self.map_name());
+                }
+                let link = self.config.map_mods.remove(found);
+                self.save();
+                self.start_map_mods(admin);
+                let label = folder_of(&link).unwrap_or(link);
+                format!("Removing {label}...")
+            }
+            "update" => {
+                if self.map_mods_job.is_some() {
+                    return busy.into();
+                }
+                if wanted.is_empty() {
+                    return "No map mods. map-mods add <Thunderstore link> installs one.".into();
+                }
+                self.start_map_mods(admin);
+                "Checking Thunderstore for newer versions...".into()
+            }
+            _ => "map-mods [add <Thunderstore link>|remove <map mod>|update]".into(),
+        }
+    }
+
     fn resend_maps(&mut self) {
         for g in self.guests.values_mut() {
             g.maps_sent = false;
@@ -1509,6 +1661,7 @@ impl Host {
             return;
         }
         self.now = now;
+        self.finish_map_mods();
         self.transport.poll();
         let mut links = std::mem::take(&mut self.spare_links);
         self.transport.peers_into(&mut links);
@@ -1910,6 +2063,7 @@ impl Host {
                 let text = format!("{} {} the map pool.", level.name, if what == "add" { "added to" } else { "removed from" });
                 self.changed(text, console)
             }
+            "map-mods" => self.map_mods_command(argument, admin),
             "rotation" => {
                 if argument.is_empty() {
                     return self.rotation_text();

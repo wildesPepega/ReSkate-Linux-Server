@@ -22,7 +22,7 @@ const DATA_DEPTH: usize = 32;
 // Commands the server answers itself; plugins cannot take these names.
 const RESERVED: &[&str] = &[
     "help", "?", "party", "p", "yes", "y", "no", "n", "vote", "status", "players", "say", "chat", "kick", "ban", "unban",
-    "w", "whisper", "tell", "msg", "msg-party", "msg-admins", "map-pool", "rotation",
+    "w", "whisper", "tell", "msg", "msg-party", "msg-admins", "map-pool", "rotation", "map-mods",
     "bans", "map", "maps", "name", "password", "welcome", "listed", "tps", "voice", "voice-range", "voice-allow",
     "distances", "placement", "object-placement", "clear-objects", "noclip", "noclip-allow", "nobail", "nobail-allow",
     "boosts", "boosts-allow", "tuning", "tuning-enforce", "tpall", "tphere", "park", "layer", "layers", "layer-sync",

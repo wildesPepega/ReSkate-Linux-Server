@@ -134,14 +134,28 @@ the same map mod installed to join.
 
 ### Maps from Thunderstore
 
-Instead of copying folders, list the maps' Thunderstore links in `map_mods` (or pass them with
-`--map-mods "<link>,<link>"`; on Pterodactyl, the **Map Mods** variable):
+Instead of copying folders, give the server the map's Thunderstore link. The quickest way is the
+console (or `/map-mods` in chat for admins), while the server runs:
+
+```
+map-mods add https://thunderstore.io/c/<game>/p/<owner>/<map>/
+map-mods                      # what is installed, with the maps each one brings
+map-mods remove <map>         # by link, Owner-Name or map name
+map-mods update               # fetch newer versions now
+```
+
+The download runs in the background and the answer follows when it is done ("New maps: bbcity.
+Change with map <name>."); players are not interrupted. `map-mods add` saves the link in
+`map_mods`; the list can also be edited there directly:
 
 ```json
 "map_mods": ["https://thunderstore.io/c/<game>/p/<owner>/<map>/"]
 ```
 
-At every start the server:
+Links passed with `--map-mods "<link>,<link>"` (on Pterodactyl: the **Map Mods** variable) are
+installed as well. They are not saved in `map_mods` and are taken out where they were put in.
+
+At every start (and on each `map-mods` change) the server:
 
 - installs each listed map into `Mods/<owner>-<map>/`, or updates it when Thunderstore has a newer
   version. A link ending in `/v/<version>/` (or `<owner>-<map>-<version>`) stays on that version.

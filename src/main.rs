@@ -273,7 +273,8 @@ fn parse_options() -> Result<Options, String> {
                 options.query_port = Some(port(value(i)?, "--query-port")?);
                 i += 1;
             }
-            // Thunderstore links of custom maps, from a hosting panel's variable; replaces "map_mods".
+            // Thunderstore links of custom maps, from a hosting panel's variable; installed beside
+            // "map_mods" and not saved into it.
             "--map-mods" | "--map_mods" => {
                 options.map_mods = Some(thunderstore::split_links(&value(i)?));
                 i += 1;
@@ -344,18 +345,16 @@ fn run() -> i32 {
     if !added.is_empty() {
         write_log(&format!("Added new settings to {file_name} with their defaults: {}.", added.join(", ")));
     }
-    // Map mods from Thunderstore, before the maps are read. A panel's list (--map-mods, or the
-    // MAP_MODS variable) replaces the file's and is saved, so the file shows what the server uses.
-    // Pterodactyl hands its variables over as environment variables (egg variable MAP_MODS).
-    let panel_links = std::env::var("MAP_MODS").ok().map(|text| thunderstore::split_links(&text));
-    if let Some(links) = options.map_mods.clone().or(panel_links) {
-        if links != config.map_mods {
-            config.map_mods = links;
-            let _ = save_config(&config);
-        }
-    }
-    let map_mods = thunderstore::sync(&here.join("Mods"), &config.map_mods);
-    for line in &map_mods.lines {
+    // Map mods from Thunderstore, before the maps are read: the file's ("map_mods", also
+    // map-mods add) and a panel's (--map-mods, or the MAP_MODS variable: Pterodactyl hands its
+    // variables over as environment variables).
+    let panel_links = options
+        .map_mods
+        .clone()
+        .or_else(|| std::env::var("MAP_MODS").ok().map(|text| thunderstore::split_links(&text)))
+        .unwrap_or_default();
+    let map_mods = thunderstore::sync(&here.join("Mods"), &thunderstore::merge_links(&config.map_mods, &panel_links));
+    for line in map_mods.lines.iter().chain(&config::drop_removed_maps(&mut config, &map_mods.removed_maps)) {
         write_log(line);
     }
     // Maps: the retail ones and custom maps from Mods/<mod>/reskate-levels.json.
@@ -373,18 +372,9 @@ fn run() -> i32 {
         config.map = setting;
         renamed = true;
     }
-    // A map that just came from Thunderstore joins a pool that names maps, or nobody could vote
-    // for it; taken out again later, it stays out.
-    if !config.map_pool.is_empty() {
-        for name in &map_mods.new_maps {
-            if let Some(level) = config::find_level(name) {
-                if !config.map_pool.iter().any(|m| m.eq_ignore_ascii_case(&level.name)) {
-                    write_log(&format!("Map mods: added {} to map_pool.", level.name));
-                    config.map_pool.push(level.name);
-                    renamed = true;
-                }
-            }
-        }
+    for name in config::pool_new_maps(&mut config, &map_mods.new_maps) {
+        write_log(&format!("Map mods: added {name} to map_pool."));
+        renamed = true;
     }
     // Short pool names ("isle") are saved in full.
     for map in &mut config.map_pool {
@@ -491,6 +481,8 @@ fn run() -> i32 {
         return 1;
     }
     let mut host = Host::new(config, transport, Box::new(write_log));
+    host.mods_dir = here.join("Mods");
+    host.panel_map_mods = panel_links;
     if let Err(e) = catch_unwind(AssertUnwindSafe(|| host.start())).unwrap_or_else(|p| Err(panic_text(p))) {
         write_log(&format!("Could not open the server: {e}"));
         return 1;

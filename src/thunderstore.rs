@@ -337,21 +337,24 @@ pub(crate) fn manifest_from(agent: &ureq::Agent, url: &str, temp: &Path) -> Resu
     result
 }
 
-fn installed_version(folder: &Path) -> Option<String> {
+pub fn installed_version(folder: &Path) -> Option<String> {
     let text = std::fs::read_to_string(folder.join(MARKER)).ok()?;
     let root: Value = serde_json::from_str(&text).ok()?;
     root.get("version")?.as_str().map(str::to_string)
 }
 
+#[derive(Default)]
 pub struct SyncReport {
     pub lines: Vec<String>,
     // The assets of maps that came with packages installed for the first time.
     pub new_maps: Vec<String>,
+    // The names and assets of maps whose packages were removed.
+    pub removed_maps: Vec<String>,
 }
 
 // Brings Mods/ in line with `links`; the lines say what happened, for the log.
 pub fn sync(mods: &Path, links: &[String]) -> SyncReport {
-    let mut report = SyncReport { lines: Vec::new(), new_maps: Vec::new() };
+    let mut report = SyncReport::default();
     let mut wanted = Vec::new();
     for link in links.iter().filter(|l| !l.trim().is_empty()) {
         match parse_package(link) {
@@ -365,6 +368,8 @@ pub fn sync(mods: &Path, links: &[String]) -> SyncReport {
         for path in entries.filter_map(|e| e.ok()).map(|e| e.path()) {
             let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
             if path.join(MARKER).is_file() && !wanted.iter().any(|p| p.folder().eq_ignore_ascii_case(&name)) {
+                report.removed_maps.extend(installed_maps(&path));
+                report.removed_maps.extend(installed_assets(&path));
                 match std::fs::remove_dir_all(&path) {
                     Ok(()) => report.lines.push(format!("Map mods: removed {name}, which is no longer listed.")),
                     Err(e) => report.lines.push(format!("Map mods: could not remove {name}: {e}")),
@@ -413,6 +418,40 @@ pub fn sync(mods: &Path, links: &[String]) -> SyncReport {
         }
     }
     report
+}
+
+// Both lists, each package once (the first link naming it wins).
+pub fn merge_links(first: &[String], second: &[String]) -> Vec<String> {
+    let mut links: Vec<String> = Vec::new();
+    for link in first.iter().chain(second) {
+        let folder = parse_package(link).map(|p| p.folder());
+        if folder.is_none() || !links.iter().any(|l| parse_package(l).map(|p| p.folder()).is_some_and(|f| Some(&f) == folder.as_ref())) {
+            links.push(link.clone());
+        }
+    }
+    links
+}
+
+fn installed_levels(folder: &Path) -> Vec<Value> {
+    let Ok(text) = std::fs::read_to_string(folder.join(MANIFEST)) else { return Vec::new() };
+    let Ok(root) = serde_json::from_str::<Value>(&text) else { return Vec::new() };
+    root.get("levels").and_then(Value::as_array).cloned().unwrap_or_default()
+}
+
+pub fn installed_assets(folder: &Path) -> Vec<String> {
+    installed_levels(folder).iter().filter_map(|l| Some(l.get("asset")?.as_str()?.to_string())).collect()
+}
+
+// The names of the maps a package installed, from its kept reskate-levels.json.
+pub fn installed_maps(folder: &Path) -> Vec<String> {
+    installed_levels(folder)
+        .iter()
+        .filter_map(|l| {
+            let asset = l.get("asset")?.as_str()?;
+            let name = l.get("displayName").and_then(Value::as_str).filter(|n| !n.is_empty());
+            Some(name.map(str::to_string).unwrap_or_else(|| crate::world::world_level_name(asset)))
+        })
+        .collect()
 }
 
 // Links as a panel variable holds them: separated by commas, semicolons or whitespace.
