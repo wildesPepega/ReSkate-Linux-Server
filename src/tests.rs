@@ -1385,3 +1385,61 @@ fn map_mods_setting() {
     assert!(std::fs::read_to_string(&file).unwrap().contains("\"map_mods\""));
     let _ = std::fs::remove_file(&file);
 }
+
+#[test]
+fn map_mods_command() {
+    use crate::thunderstore::{merge_links, MARKER};
+    assert_eq!(
+        merge_links(&["Dingo-A".into(), "https://thunderstore.io/c/skate/p/Dingo/B/".into()], &["Dingo-B-1.0.0".into(), "Dingo-C".into()]),
+        ["Dingo-A", "https://thunderstore.io/c/skate/p/Dingo/B/", "Dingo-C"]
+    );
+    let folder = std::env::temp_dir().join(format!("reskate-mapmods-cmd-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&folder);
+    let mods = folder.join("Mods");
+    for name in ["Dingo-Old", "Dingo-Panel"] {
+        std::fs::create_dir_all(mods.join(name)).unwrap();
+        std::fs::write(mods.join(name).join(MARKER), r#"{"version":"1.0.0"}"#).unwrap();
+        std::fs::write(mods.join(name).join("reskate-levels.json"), r#"{"levels":[{"asset":"Levels/Custom/Old/Old","displayName":"oldmap"}]}"#).unwrap();
+    }
+    // Reading the maps again (as the install does) must leave the shared list as the other tests
+    // load it: with bbcity.
+    std::fs::create_dir_all(mods.join("bbcity")).unwrap();
+    std::fs::write(mods.join("bbcity").join("reskate-levels.json"), r#"{"levels":[{"asset":"Levels/Custom/BBCity/BBCity","displayName":"bbcity"}]}"#).unwrap();
+    let mut config = ServerConfig::default();
+    config.file = folder.join("ReSkateServer.json");
+    config.map_mods = vec!["Dingo-Old".into()];
+    let mut host = crate::host::Host::new(config, crate::steam::SteamTransport::new(), Box::new(|_: &str| {}));
+    host.mods_dir = mods.clone();
+    host.panel_map_mods = vec!["Dingo-Panel".into()];
+    let list = host.command("map-mods", 0);
+    assert!(list.contains("Dingo-Old 1.0.0: oldmap") && list.contains("Dingo-Panel 1.0.0: oldmap  (panel)"), "{list}");
+    assert!(host.command("map-mods add not a link", 0).starts_with("map-mods add <"));
+    assert!(host.command("map-mods add Dingo-Old-2.0.0", 0).contains("already listed"));
+    assert!(host.command("map-mods remove Dingo-Panel", 0).contains("panel"));
+    assert!(host.command("map-mods remove nothing", 0).starts_with("No map mod matches"));
+    // The server's own map cannot go; pool entries can.
+    host.config.map = "oldmap".into();
+    assert!(host.command("map-mods remove oldmap", 0).contains("change the map first"));
+    host.config.map = "San Vansterdam".into();
+    host.config.map_pool = vec!["San Vansterdam".into(), "oldmap".into()];
+    // Removing needs no network: the folder goes, the panel's too once it is off the list.
+    host.panel_map_mods.clear();
+    assert_eq!(host.command("map-mods remove oldmap", 0), "Removing Dingo-Old...");
+    assert!(host.command("map-mods update", 0).contains("being installed"));
+    for _ in 0..500 {
+        host.finish_map_mods();
+        if host.map_mods_job.is_none() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    assert!(host.map_mods_job.is_none() && !mods.join("Dingo-Old").exists() && !mods.join("Dingo-Panel").exists());
+    assert!(host.config.map_mods.is_empty());
+    assert_eq!(host.config.map_pool, ["San Vansterdam"]);
+    let mut config = ServerConfig::default();
+    config.map = "OldMap".into();
+    assert_eq!(crate::config::drop_removed_maps(&mut config, &["oldmap".into()]).len(), 1);
+    assert_eq!(config.map, "San Vansterdam");
+    assert!(std::fs::read_to_string(folder.join("ReSkateServer.json")).unwrap().contains("\"map_mods\": []"));
+    let _ = std::fs::remove_dir_all(&folder);
+}

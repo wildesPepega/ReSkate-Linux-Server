@@ -63,9 +63,11 @@ changes without a restart. See [plugins.md](plugins.md). A reinstall does not to
 
 ## Custom maps
 
-Paste the map's Thunderstore link into the **Map Mods** variable (Startup tab; several separated by
-commas) and restart. The server fetches only the map's `reskate-levels.json` into `Mods/` and keeps
-it up to date at every start; clear a link to remove that map again. See
+Type `map-mods add <Thunderstore link>` in the panel console (admins: `/map-mods add …` in game).
+The server fetches only the map's `reskate-levels.json` into `Mods/` in the background, without a
+restart, and keeps it up to date at every start. `map-mods` lists them, `map-mods remove <map>`
+takes one out. Or paste the links into the **Map Mods** variable (Startup tab; several separated by
+commas) and restart; clear a link there to remove that map again. See
 [installation.md](installation.md#maps-from-thunderstore).
 
 Maps that are not on Thunderstore: create a `Mods/` folder in the file manager and upload the map's
